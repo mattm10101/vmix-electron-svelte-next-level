@@ -5,28 +5,37 @@
 /* Base reset & background */
 html, body {
   @apply bg-lab-metal text-neon-teal font-sci h-full w-full overflow-hidden m-0 p-0;
+  position: relative;
 }
 
-/* Panel wrapper: resizable */
+/* Panel wrapper: resizable + no height animation */
 .panel {
   @apply bg-lab-panel rounded-xl shadow-panel flex flex-col;
+  position: absolute;
   resize: both;
   overflow: hidden;
   min-width: 200px;
   min-height: 150px;
+  /* remove height/min-height transitions */
+  transition-property: background-color, box-shadow, transform;
+  transition-duration: 0.2s;
+  transition-timing-function: ease-in-out;
 }
 
 /* Panel header */
 .panel-header {
-  @apply bg-lab-header text-neon-teal px-4 py-2 flex justify-between items-center;
+  @apply bg-lab-header text-neon-teal px-4 py-2 flex justify-between items-center cursor-move;
 }
 .panel-header h2 {
   @apply text-lg font-semibold;
 }
 
-/* Header buttons */
+/* Header button */
 .header-button {
-  @apply text-sm text-neon-blue hover:text-neon-teal cursor-pointer select-none;
+  @apply text-sm text-neon-blue hover:text-neon-teal cursor-pointer select-none transition-transform duration-200 ease-in-out;
+}
+.header-button:hover {
+  @apply scale-110;
 }
 
 /* Panel content */
@@ -38,33 +47,29 @@ html, body {
 .btn-trans {
   @apply w-full h-full flex items-center justify-center py-2 rounded-md
          bg-neon-teal/10 border border-neon-teal text-neon-teal
-         hover:bg-neon-teal/20 transition;
+         hover:bg-neon-teal/20 transition-all duration-150 ease-in-out;
 }
 
-/* Input buttons: fill their grid cell */
+/* Input buttons */
 .input-btn {
   @apply w-full h-full flex flex-col items-center justify-center
          bg-lab-panel border border-neon-teal rounded-md
-         hover:shadow-glow transition p-2;
+         hover:shadow-glow transition-all duration-150 ease-in-out p-2;
 }
-
-/* Input number */
 .input-btn span.number {
   @apply text-2xl font-bold;
 }
-
-/* Input name: wrap & clamp to two lines */
 .input-btn span.name {
   @apply text-xs text-neon-blue mt-1 text-center;
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;  /* Safari/WebKit */
-  line-clamp: 2;          /* Standard */
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
   white-space: normal;
 }
 
-/* Program (live) & Preview states */
+/* Program & Preview states */
 .program {
   @apply bg-neon-teal text-black border-neon-teal shadow-glow !important;
 }
@@ -75,4 +80,13 @@ html, body {
 /* Command log */
 .log-container {
   @apply bg-lab-panel text-neon-blue font-mono text-sm p-3 rounded-lg overflow-auto h-full;
+}
+
+/* Minimized panels: collapse content */
+.panel.minimized {
+  height: 2.75rem !important;
+  min-height: 2.75rem !important;
+}
+.panel.minimized .panel-content {
+  display: none;
 }
