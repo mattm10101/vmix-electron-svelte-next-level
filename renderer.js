@@ -1,7 +1,7 @@
 import './src/app.css';
 
 window.addEventListener('DOMContentLoaded', () => {
-  // Panel refs
+  // Panel elements
   const panels = {
     transitions: document.getElementById('transitionsPanel'),
     inputs:      document.getElementById('inputsPanel'),
@@ -14,33 +14,33 @@ window.addEventListener('DOMContentLoaded', () => {
     inputs:      document.getElementById('toggleInputs'),
     log:         document.getElementById('toggleLog'),
   };
-
   Object.keys(toggles).forEach(key => {
-    const panel = panels[key];
-    const btn   = toggles[key];
-    btn.onclick = () => {
-      const isMin = panel.classList.toggle('minimized');
-      panel.style.minHeight = isMin ? '' : '';
-      panel.style.height    = isMin ? '' : '';
-      btn.textContent = isMin ? '↕' : '—';
+    toggles[key].onclick = () => {
+      const p = panels[key];
+      const isMin = p.classList.toggle('minimized');
+      toggles[key].textContent = isMin ? '↕' : '—';
     };
   });
 
-  // Make panels draggable
-  let drag = { el: null, xOff:0, yOff:0 };
-  document.querySelectorAll('.panel-header').forEach(header => {
-    header.addEventListener('mousedown', e => {
-      drag.el = header.parentElement;
+  // Draggable with bounds clamp
+  let drag = { el: null, xOff: 0, yOff: 0 };
+  document.querySelectorAll('.panel-header').forEach(h => {
+    h.addEventListener('mousedown', e => {
+      drag.el = h.parentElement;
       drag.xOff = e.clientX - drag.el.offsetLeft;
       drag.yOff = e.clientY - drag.el.offsetTop;
       drag.el.style.zIndex = 1000;
     });
   });
   document.addEventListener('mousemove', e => {
-    if (drag.el) {
-      drag.el.style.left = `${e.clientX - drag.xOff}px`;
-      drag.el.style.top  = `${e.clientY - drag.yOff}px`;
-    }
+    if (!drag.el) return;
+    let nx = e.clientX - drag.xOff;
+    let ny = e.clientY - drag.yOff;
+    const pw = drag.el.offsetWidth, ph = drag.el.offsetHeight;
+    nx = Math.max(0, Math.min(nx, window.innerWidth - pw - 10));
+    ny = Math.max(0, Math.min(ny, window.innerHeight - ph - 10));
+    drag.el.style.left = `${nx}px`;
+    drag.el.style.top  = `${ny}px`;
   });
   document.addEventListener('mouseup', () => {
     if (drag.el) {
@@ -49,16 +49,21 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Logging & vMix logic
+  // Logging utility
   const logCont = document.getElementById('logContainer');
   function log(msg, type='info') {
     const ts = new Date().toLocaleTimeString();
-    const color = type==='sent' ? '#14ffec' : (type==='received' ? '#00d0ff' : '#ff14ec');
+    const color =
+      type==='sent' ? '#14ffec' :
+      type==='received' ? '#00d0ff' :
+      '#ff14ec';
     const e = document.createElement('div');
     e.innerHTML = `<span style="color:#555">[${ts}]</span> <span style="color:${color}">${msg}</span>`;
     logCont.append(e);
     logCont.scrollTop = logCont.scrollHeight;
   }
+
+  // Send vMix commands
   function send(cmd) {
     window.electronAPI.send(cmd);
     log(`SENT: ${cmd}`, 'sent');
@@ -96,12 +101,14 @@ window.addEventListener('DOMContentLoaded', () => {
         break;
       }
     }
-    log(`Discovered ${inputButtons.length} inputs`,`info`);
+    log(`Discovered ${inputButtons.length} inputs`, 'info');
   }
 
-  // Refresh on panel load
+  // Hook up refresh button and initial load
+  document.getElementById('refreshInputs').onclick = refreshInputs;
   refreshInputs();
 
+  // Tally updates
   window.electronAPI.receive(data => {
     log(`RECV: ${data}`, 'received');
     if (data.startsWith('TALLY OK')) {

@@ -8,7 +8,7 @@ html, body {
   position: relative;
 }
 
-/* Panel wrapper: resizable + no height animation */
+/* Panel wrapper: absolute + draggable + resizable + bounds */
 .panel {
   @apply bg-lab-panel rounded-xl shadow-panel flex flex-col;
   position: absolute;
@@ -16,7 +16,10 @@ html, body {
   overflow: hidden;
   min-width: 200px;
   min-height: 150px;
-  /* remove height/min-height transitions */
+  /* Prevent growing beyond viewport */
+  max-width: calc(100vw - 20px);
+  max-height: calc(100vh - 20px);
+  /* Only animate hover & transform */
   transition-property: background-color, box-shadow, transform;
   transition-duration: 0.2s;
   transition-timing-function: ease-in-out;
