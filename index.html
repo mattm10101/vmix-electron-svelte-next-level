@@ -11,7 +11,7 @@
 </head>
 <body class="bg-lab-metal text-neon-teal font-sci h-full w-full m-0 p-0">
 
-  <!-- Transitions Panel -->
+  <!-- Transitions Panel (unchanged) -->
   <div id="transitionsPanel" class="panel" style="top:20px; left:20px; width:240px; height:300px;">
     <div class="panel-header">
       <h2>Transitions</h2>
@@ -26,18 +26,23 @@
   </div>
 
   <!-- Inputs Panel -->
-  <div id="inputsPanel" class="panel" style="top:20px; left:280px; width:800px; height:400px;">
+  <div id="inputsPanel" class="panel" style="top:20px; left:280px; width:800px; height:450px;">
     <div class="panel-header">
       <h2>Inputs</h2>
       <span id="toggleInputs" class="header-button">—</span>
     </div>
     <div class="panel-content flex flex-col">
-      <div class="flex justify-end p-2">
-        <button id="refreshInputs" class="header-button">⟳</button>
+      <!-- Options sub-panel -->
+      <div class="options-container">
+        <button id="optToggleNumbers">Hide Numbers</button>
+        <button id="optToggleL3">Hide L3’s</button>
+        <button id="optToggleLists">Hide Lists</button>
       </div>
+
+      <!-- INPUTS GRID: note `grid` + `items-stretch` + `flex-1` -->
       <div
         id="inputPanelContent"
-        class="flex-1 grid gap-4 overflow-auto"
+        class="flex-1 grid items-stretch gap-4 overflow-auto"
         style="
           grid-template-columns: repeat(auto-fit, minmax(200px,1fr));
           grid-auto-rows: minmax(0,1fr);
@@ -46,8 +51,8 @@
     </div>
   </div>
 
-  <!-- Command Log Panel -->
-  <div id="logPanel" class="panel" style="top:440px; left:280px; width:800px; height:300px;">
+  <!-- Command Log Panel (unchanged) -->
+  <div id="logPanel" class="panel" style="top:490px; left:280px; width:800px; height:300px;">
     <div class="panel-header">
       <h2>Command Log</h2>
       <span id="toggleLog" class="header-button">—</span>
