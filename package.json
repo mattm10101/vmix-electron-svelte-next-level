@@ -1,0 +1,14 @@
+{
+  "name": "vmix-electron-controller",
+  "version": "1.0.0",
+  "description": "An Electron app with Angular to control vMix via TCP.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^28.2.0"
+  }
+}
