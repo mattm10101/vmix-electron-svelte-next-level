@@ -21,7 +21,7 @@
             margin-top: 0;
             text-align: center;
         }
-        button { /* General button styling */
+        button {
             padding: 10px 15px;
             border-radius: 5px;
             border: 1px solid #3c3c3c;
@@ -30,6 +30,11 @@
             font-size: 14px;
             cursor: pointer;
             transition: background-color 0.2s, border-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            min-height: 40px;
         }
         button:hover {
             background-color: #3f3f46;
@@ -52,8 +57,21 @@
             gap: 10px;
         }
         .input-btn {
-            font-size: 1.5em;
+            flex-direction: column; /* Stack content vertically */
+            justify-content: center;
+            align-items: center;
+            padding: 5px;
+            line-height: 1.2;
+            word-break: break-word;
+        }
+        .input-btn .input-number {
+            font-size: 1.8em;
             font-weight: bold;
+        }
+        .input-btn .input-name {
+            font-size: 0.8em;
+            margin-top: 4px;
+            color: #cccccc;
         }
         .input-btn.program {
             background-color: #28a745; /* Green */
@@ -71,7 +89,7 @@
             border: 1px solid #3c3c3c;
             border-radius: 5px;
             padding: 15px;
-            height: 200px; /* Fixed height for the log */
+            height: 200px;
             overflow-y: auto;
             font-family: "Courier New", Courier, monospace;
             white-space: pre-wrap;
@@ -89,6 +107,8 @@
             <button id="cutButton">Cut</button>
             <button id="mergeButton">Merge</button>
             <button id="stinger1Button">Stinger 1</button>
+            <hr style="border-color: #3c3c3c; width: 100%; margin: 10px 0;">
+            <button id="refreshNamesButton">Refresh Names</button>
         </div>
         <div class="input-grid">
             <!-- Input buttons will be dynamically created -->

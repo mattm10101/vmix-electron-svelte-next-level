@@ -2,12 +2,14 @@
 
 const { contextBridge, ipcRenderer } = require('electron');
 
-// Expose a secure API to the renderer process (our Angular app)
+// Expose a secure API to the renderer process (our UI)
 contextBridge.exposeInMainWorld('electronAPI', {
-  // Function to send data from Renderer to Main (e.g., a vMix command)
+  // For sending one-way commands to the main process
   send: (command) => ipcRenderer.send('to-vmix', command),
 
-  // Function to receive data from Main to Renderer (e.g., a vMix response)
-  // The callback function (e.g., (data) => { ... }) will be executed in the renderer
+  // For receiving real-time events from the main process
   receive: (callback) => ipcRenderer.on('from-vmix', (_event, value) => callback(value)),
+
+  // For fetching a single input's name and getting a response
+  getInputName: (inputNumber) => ipcRenderer.invoke('get-input-name', inputNumber),
 });
