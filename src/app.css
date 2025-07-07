@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base reset & background */
+html, body {
+  @apply bg-lab-metal text-neon-teal font-sci h-full w-full overflow-hidden m-0 p-0;
+}
+
+/* Panel wrapper: resizable */
+.panel {
+  @apply bg-lab-panel rounded-xl shadow-panel flex flex-col;
+  resize: both;
+  overflow: hidden;
+  min-width: 200px;
+  min-height: 150px;
+}
+
+/* Panel header */
+.panel-header {
+  @apply bg-lab-header text-neon-teal px-4 py-2 flex justify-between items-center;
+}
+.panel-header h2 {
+  @apply text-lg font-semibold;
+}
+
+/* Header buttons */
+.header-button {
+  @apply text-sm text-neon-blue hover:text-neon-teal cursor-pointer select-none;
+}
+
+/* Panel content */
+.panel-content {
+  @apply flex-1 overflow-auto p-4;
+}
+
+/* Transition buttons */
+.btn-trans {
+  @apply w-full h-full flex items-center justify-center py-2 rounded-md
+         bg-neon-teal/10 border border-neon-teal text-neon-teal
+         hover:bg-neon-teal/20 transition;
+}
+
+/* Input buttons: fill their grid cell */
+.input-btn {
+  @apply w-full h-full flex flex-col items-center justify-center
+         bg-lab-panel border border-neon-teal rounded-md
+         hover:shadow-glow transition p-2;
+}
+
+/* Input number */
+.input-btn span.number {
+  @apply text-2xl font-bold;
+}
+
+/* Input name: wrap & clamp to two lines */
+.input-btn span.name {
+  @apply text-xs text-neon-blue mt-1 text-center;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;  /* Safari/WebKit */
+  line-clamp: 2;          /* Standard */
+  overflow: hidden;
+  white-space: normal;
+}
+
+/* Program (live) & Preview states */
+.program {
+  @apply bg-neon-teal text-black border-neon-teal shadow-glow !important;
+}
+.preview {
+  @apply bg-orange-500 text-black border-orange-500 shadow-glow !important;
+}
+
+/* Command log */
+.log-container {
+  @apply bg-lab-panel text-neon-blue font-mono text-sm p-3 rounded-lg overflow-auto h-full;
+}
