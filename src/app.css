@@ -11,3 +11,11 @@ body {
 #app {
   height: 100%;
 }
+
+.input-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-auto-rows: 90px;
+  gap: 10px;
+  height: 100%;
+}

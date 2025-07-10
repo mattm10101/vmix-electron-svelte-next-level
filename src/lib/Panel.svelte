@@ -13,88 +13,105 @@
     min: false,
   }
 
+  $: title
   const titleId = `panel-title-${id}`
 
-  let state
-  let panelElement
-  let headerElement
-  let isDragging = false
-  let isResizing = false
-  let dragOffsetX, dragOffsetY
+  // This is the panel's current state. We use optional chaining (?.) for safety on the first render.
+  $: state = $panelStates[id] || defaultState
 
-  const unsubscribe = panelStates.subscribe((states) => {
-    state = states[id] || defaultState
-  })
+  let panelElement
 
   onMount(() => {
-    panelStates.update((states) => {
-      if (!states[id]) {
-        states[id] = defaultState
+    // Ensure the panel has a state entry when it first mounts
+    panelStates.update((allStates) => {
+      if (!allStates[id]) {
+        return { ...allStates, [id]: defaultState }
       }
-      return states
+      return allStates
     })
 
-    const onMouseMove = (e) => {
-      if (isDragging) {
-        let newX = e.clientX - dragOffsetX
-        let newY = e.clientY - dragOffsetY
-        state.x = Math.max(0, Math.min(newX, window.innerWidth - state.width))
-        state.y = Math.max(0, Math.min(newY, window.innerHeight - state.height))
-        updateState()
-      } else if (isResizing) {
-        state.width = Math.max(200, e.clientX - state.x)
-        state.height = Math.max(150, e.clientY - state.y)
-        updateState()
+    let isDragging = false
+    let isResizing = false
+    let dragOffsetX, dragOffsetY
+
+    function onMouseDown(e) {
+      // Determine if we are dragging the header or resizing
+      if (e.target.classList.contains('resize-handle')) {
+        e.stopPropagation()
+        isResizing = true
+      } else if (
+        e.target.closest('.panel-header') &&
+        !e.target.closest('.panel-control')
+      ) {
+        isDragging = true
+        dragOffsetX = e.clientX - state.x
+        dragOffsetY = e.clientY - state.y
+      } else {
+        return // Don't do anything if clicking on content or other controls
       }
+
+      bringToFront()
+      document.addEventListener('mousemove', onMouseMove)
+      document.addEventListener('mouseup', onMouseUp, { once: true })
     }
 
-    const onMouseUp = () => {
+    function onMouseMove(e) {
+      // Use a single update object to prevent multiple re-renders
+      let partialUpdate = {}
+      if (isDragging) {
+        partialUpdate = {
+          x: Math.max(
+            0,
+            Math.min(e.clientX - dragOffsetX, window.innerWidth - state.width)
+          ),
+          y: Math.max(
+            0,
+            Math.min(e.clientY - dragOffsetY, window.innerHeight - state.height)
+          ),
+        }
+      } else if (isResizing) {
+        partialUpdate = {
+          width: Math.max(200, e.clientX - state.x),
+          height: Math.max(150, e.clientY - state.y),
+        }
+      }
+      updateStore(partialUpdate)
+    }
+
+    function onMouseUp() {
       isDragging = false
       isResizing = false
       document.removeEventListener('mousemove', onMouseMove)
-      document.removeEventListener('mouseup', onMouseUp)
     }
 
-    headerElement.addEventListener('mousedown', (e) => {
-      if (e.target.closest('.panel-control')) return
-      isDragging = true
-      bringToFront()
-      dragOffsetX = e.clientX - state.x
-      dragOffsetY = e.clientY - state.y
-      document.addEventListener('mousemove', onMouseMove)
-      document.addEventListener('mouseup', onMouseUp)
-    })
+    panelElement.addEventListener('mousedown', onMouseDown)
 
-    return () => unsubscribe()
-  })
-
-  function updateState() {
-    panelStates.update((states) => ({ ...states, [id]: state }))
-  }
-
-  function bringToFront() {
-    panelStates.update((states) => {
-      const maxZ = Math.max(0, ...Object.values(states).map((p) => p.z))
-      state.z = maxZ + 1
-      return { ...states, [id]: state }
-    })
-  }
-
-  function handleResizeHandle(e) {
-    isResizing = true
-    bringToFront()
-    const onMouseMove = (e) => {
-      state.width = Math.max(200, e.clientX - state.x)
-      state.height = Math.max(150, e.clientY - state.y)
-      updateState()
-    }
-    const onMouseUp = () => {
-      isResizing = false
+    return () => {
+      panelElement.removeEventListener('mousedown', onMouseDown)
       document.removeEventListener('mousemove', onMouseMove)
       document.removeEventListener('mouseup', onMouseUp)
     }
-    document.addEventListener('mousemove', onMouseMove)
-    document.addEventListener('mouseup', onMouseUp)
+  })
+
+  // This robust function creates a new state object, which guarantees reactivity.
+  function updateStore(partialState) {
+    panelStates.update((allStates) => {
+      if (allStates[id]) {
+        return {
+          ...allStates,
+          [id]: {
+            ...allStates[id],
+            ...partialState,
+          },
+        }
+      }
+      return allStates
+    })
+  }
+
+  function bringToFront() {
+    const maxZ = Math.max(0, ...Object.values($panelStates).map((p) => p.z))
+    updateStore({ z: maxZ + 1 })
   }
 
   function handleResizeKeydown(e) {
@@ -103,19 +120,20 @@
     if (!keys.includes(e.key)) return
 
     e.preventDefault()
-    if (e.key === 'ArrowRight') state.width += step
-    if (e.key === 'ArrowLeft') state.width -= step
-    if (e.key === 'ArrowDown') state.height += step
-    if (e.key === 'ArrowUp') state.height -= step
+    let { width, height } = state
+    if (e.key === 'ArrowRight') width += step
+    if (e.key === 'ArrowLeft') width -= step
+    if (e.key === 'ArrowDown') height += step
+    if (e.key === 'ArrowUp') height -= step
 
-    state.width = Math.max(200, state.width)
-    state.height = Math.max(150, state.height)
-    updateState()
+    updateStore({
+      width: Math.max(200, width),
+      height: Math.max(150, height),
+    })
   }
 
   function toggleMinimized() {
-    state.min = !state.min
-    updateState()
+    updateStore({ min: !state.min })
   }
 </script>
 
@@ -124,18 +142,17 @@
   class:minimized={state.min}
   bind:this={panelElement}
   style="left: {state.x}px; top: {state.y}px; width: {state.width}px; height: {state.height}px; z-index: {state.z};"
-  on:mousedown={bringToFront}
   role="dialog"
   aria-labelledby={titleId}
   tabindex="-1"
 >
-  <div class="panel-header" bind:this={headerElement}>
+  <div class="panel-header">
     <span class="panel-title" id={titleId}>{title}</span>
     <div class="panel-controls">
       <slot name="header-controls"></slot>
       <button
         class="panel-control"
-        on:click={toggleMinimized}
+        on:click|stopPropagation={toggleMinimized}
         aria-label="Toggle panel minimization">{state.min ? '⧄' : '—'}</button
       >
     </div>
@@ -145,7 +162,6 @@
   </div>
   <button
     class="resize-handle"
-    on:mousedown|stopPropagation={handleResizeHandle}
     on:keydown={handleResizeKeydown}
     aria-label="Resize panel"
   ></button>

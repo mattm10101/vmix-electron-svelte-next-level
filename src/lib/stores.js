@@ -1,4 +1,3 @@
-// src/lib/stores.js
 import { writable } from 'svelte/store'
 
 /**
@@ -16,6 +15,9 @@ export const logMessages = writable([])
  */
 export const panelStates = writable({})
 
-// NEW: Stores to hold the single active program and preview input number
 export const programInput = writable(0)
 export const previewInput = writable(0)
+export const isMasterAudioMuted = writable(false)
+
+// NEW: Store for saved layout presets
+export const layoutPresets = writable([])

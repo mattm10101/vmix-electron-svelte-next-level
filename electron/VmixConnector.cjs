@@ -22,6 +22,8 @@ class VmixConnector {
       console.log('vMix TCP Connected')
       this.isConnected = true
       this.sendCommand('SUBSCRIBE ACTS')
+
+      this.sendCommand('ACTS MasterAudio')
     })
   }
 
