@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte'
-  import { get } from 'svelte/store'
+  import { get, derived } from 'svelte/store'
   import {
     panelStates,
     inputs,
@@ -8,6 +8,7 @@
     programInput,
     previewInput,
     layoutPresets,
+    visibilityOptions,
   } from './lib/stores.js'
   import {
     sendCommand,
@@ -21,40 +22,27 @@
   import CommandLog from './lib/CommandLog.svelte'
   import MasterAudioButton from './lib/MasterAudioButton.svelte'
   import Presets from './lib/Presets.svelte'
+  import InputOptions from './lib/InputOptions.svelte'
+
+  const filteredInputs = derived(
+    [inputs, visibilityOptions],
+    ([$inputs, $opts]) => {
+      return $inputs.filter((input) => {
+        if (!$opts.showL3s && input.name.startsWith('L3 -')) return false
+        if (!$opts.show1Ups && input.name.startsWith('1UP -')) return false
+        if (!$opts.show2Ups && input.name.startsWith('2UP -')) return false
+        if (!$opts.show3Ups && input.name.startsWith('3UP -')) return false
+        if (!$opts.show4Ups && input.name.startsWith('4UP -')) return false
+        return true
+      })
+    }
+  )
 
   onMount(() => {
-    // Load panel states from localStorage
-    const savedStates = localStorage.getItem('panelStates')
-    if (savedStates) {
-      try {
-        panelStates.set(JSON.parse(savedStates))
-      } catch {}
-    }
-    const unsubscribeStates = panelStates.subscribe((states) => {
-      localStorage.setItem('panelStates', JSON.stringify(states))
-    })
-
-    // Load layout presets from localStorage
-    const savedPresets = localStorage.getItem('layoutPresets')
-    if (savedPresets) {
-      try {
-        layoutPresets.set(JSON.parse(savedPresets))
-      } catch {}
-    }
-    const unsubscribePresets = layoutPresets.subscribe((presets) => {
-      localStorage.setItem('layoutPresets', JSON.stringify(presets))
-    })
-
     initializeVmixListener()
     fetchAllInputNames(50)
-
-    return () => {
-      unsubscribeStates()
-      unsubscribePresets()
-    }
   })
 
-  // Function to save the current layout
   function handleSnapshot() {
     const currentLayout = get(panelStates)
     const presetName = `Preset ${get(layoutPresets).length + 1}`
@@ -64,10 +52,8 @@
     ])
   }
 
-  // Function to apply a saved layout
   function handleApplyPreset(event) {
-    const presetLayout = event.detail
-    panelStates.set(presetLayout)
+    panelStates.set(event.detail)
   }
 
   function handleDeletePreset(event) {
@@ -105,9 +91,17 @@
   </Panel>
 
   <Panel
+    id="inputOptions"
+    title="Input Options"
+    defaultState={{ x: 20, y: 330, width: 220, height: 310, z: 1, min: false }}
+  >
+    <InputOptions />
+  </Panel>
+
+  <Panel
     id="presets"
     title="Presets"
-    defaultState={{ x: 20, y: 330, width: 220, height: 180, z: 1, min: false }}
+    defaultState={{ x: 20, y: 650, width: 220, height: 180, z: 1, min: false }}
   >
     <Presets
       presets={$layoutPresets}
@@ -121,7 +115,7 @@
   <Panel
     id="inputs"
     title="Inputs"
-    defaultState={{ x: 260, y: 20, width: 700, height: 600, z: 1, min: false }}
+    defaultState={{ x: 260, y: 20, width: 700, height: 810, z: 1, min: false }}
   >
     <div slot="header-controls">
       <button
@@ -130,9 +124,12 @@
         title="Refresh Inputs">⟳</button
       >
     </div>
-    {#if $inputs.length > 0}
-      <div class="input-grid">
-        {#each $inputs as input (input.id)}
+    {#if $filteredInputs.length > 0}
+      <div
+        class="input-grid"
+        class:hide-numbers={!$visibilityOptions.showNumbers}
+      >
+        {#each $filteredInputs as input (input.id)}
           <InputButton
             id={input.id}
             name={input.name}
@@ -153,14 +150,13 @@
   <Panel
     id="log"
     title="Command Log"
-    defaultState={{ x: 20, y: 520, width: 220, height: 200, z: 1, min: false }}
+    defaultState={{ x: 980, y: 20, width: 280, height: 810, z: 1, min: false }}
   >
     <CommandLog messages={$logMessages} />
   </Panel>
 </main>
 
 <style>
-  /* Wrap selectors in :global() to silence the unused CSS warning */
   :global(.placeholder) {
     display: flex;
     flex-direction: column;

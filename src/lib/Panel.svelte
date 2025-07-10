@@ -16,13 +16,11 @@
   $: title
   const titleId = `panel-title-${id}`
 
-  // This is the panel's current state. We use optional chaining (?.) for safety on the first render.
   $: state = $panelStates[id] || defaultState
 
   let panelElement
 
   onMount(() => {
-    // Ensure the panel has a state entry when it first mounts
     panelStates.update((allStates) => {
       if (!allStates[id]) {
         return { ...allStates, [id]: defaultState }
@@ -35,19 +33,18 @@
     let dragOffsetX, dragOffsetY
 
     function onMouseDown(e) {
-      // Determine if we are dragging the header or resizing
-      if (e.target.classList.contains('resize-handle')) {
+      const resizeHandle = e.target.closest('.resize-handle')
+      const header = e.target.closest('.panel-header')
+
+      if (resizeHandle) {
         e.stopPropagation()
         isResizing = true
-      } else if (
-        e.target.closest('.panel-header') &&
-        !e.target.closest('.panel-control')
-      ) {
+      } else if (header && !e.target.closest('.panel-control')) {
         isDragging = true
         dragOffsetX = e.clientX - state.x
         dragOffsetY = e.clientY - state.y
       } else {
-        return // Don't do anything if clicking on content or other controls
+        return
       }
 
       bringToFront()
@@ -56,10 +53,8 @@
     }
 
     function onMouseMove(e) {
-      // Use a single update object to prevent multiple re-renders
-      let partialUpdate = {}
       if (isDragging) {
-        partialUpdate = {
+        updateStore({
           x: Math.max(
             0,
             Math.min(e.clientX - dragOffsetX, window.innerWidth - state.width)
@@ -68,14 +63,13 @@
             0,
             Math.min(e.clientY - dragOffsetY, window.innerHeight - state.height)
           ),
-        }
+        })
       } else if (isResizing) {
-        partialUpdate = {
+        updateStore({
           width: Math.max(200, e.clientX - state.x),
           height: Math.max(150, e.clientY - state.y),
-        }
+        })
       }
-      updateStore(partialUpdate)
     }
 
     function onMouseUp() {
@@ -93,7 +87,6 @@
     }
   })
 
-  // This robust function creates a new state object, which guarantees reactivity.
   function updateStore(partialState) {
     panelStates.update((allStates) => {
       if (allStates[id]) {

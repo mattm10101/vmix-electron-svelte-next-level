@@ -1,23 +1,25 @@
 import { writable } from 'svelte/store'
+import { persistentStore } from './persistentStore.js'
 
-/**
- * @type {import('svelte/store').Writable<Array<{id: number, name: string}>>}
- */
+// --- Core Stores ---
 export const inputs = writable([])
-
-/**
- * @type {import('svelte/store').Writable<Array<{timestamp: string, message: string, type: string}>>}
- */
 export const logMessages = writable([])
-
-/**
- * @type {import('svelte/store').Writable<Object<string, {x: number, y: number, width: number, height: number, z: number, min: boolean}>>}
- */
-export const panelStates = writable({})
-
 export const programInput = writable(0)
 export const previewInput = writable(0)
 export const isMasterAudioMuted = writable(false)
 
-// NEW: Store for saved layout presets
-export const layoutPresets = writable([])
+// --- Persistent Stores ---
+// These stores will now automatically save and load from localStorage
+export const panelStates = persistentStore('panelStates', {})
+export const layoutPresets = persistentStore('layoutPresets', [])
+
+// --- Consolidated Visibility Options ---
+// All filter toggles are now properties on a single store object
+export const visibilityOptions = persistentStore('visibilityOptions', {
+  showNumbers: true,
+  showL3s: true,
+  show1Ups: true,
+  show2Ups: true,
+  show3Ups: true,
+  show4Ups: true,
+})

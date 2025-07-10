@@ -15,7 +15,12 @@ body {
 .input-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  grid-auto-rows: 90px;
+  grid-auto-rows: minmax(90px, 1fr);
   gap: 10px;
   height: 100%;
+}
+
+/* NEW: Helper class to hide input numbers */
+.input-grid.hide-numbers .input-number {
+  display: none;
 }
