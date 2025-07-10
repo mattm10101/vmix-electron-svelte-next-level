@@ -1,11 +1,13 @@
 <script>
-  import { getContext, afterUpdate } from 'svelte'
+  import { afterUpdate } from 'svelte'
 
-  const logMessages = getContext('log')
+  export let messages = []
   let logContainer
 
   afterUpdate(() => {
-    if (logContainer) logContainer.scrollTop = logContainer.scrollHeight
+    if (logContainer) {
+      logContainer.scrollTop = logContainer.scrollHeight
+    }
   })
 
   const colorMap = {
@@ -17,12 +19,12 @@
 </script>
 
 <div class="log-container" bind:this={logContainer}>
-  {#each $logMessages as { timestamp, message, type } (`${timestamp}-${message}`)}
+  {#each messages as { id, timestamp, message, type } (id)}
     <div class="log-entry">
       <span class="timestamp">[{timestamp}]</span>
-      <span class="message" style="color: {colorMap[type] || 'white'}"
-        >{message}</span
-      >
+      <span class="message" style="color: {colorMap[type] || 'white'}">
+        {message}
+      </span>
     </div>
   {/each}
 </div>
@@ -35,8 +37,6 @@
     background-color: #1a1a1a;
     border-radius: 3px;
     padding: 10px;
-    box-sizing: border-box;
-    font-size: 0.9em;
   }
   .timestamp {
     color: #6a6a6a;

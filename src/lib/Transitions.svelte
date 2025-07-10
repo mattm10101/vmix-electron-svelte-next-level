@@ -3,37 +3,34 @@
   const dispatch = createEventDispatcher()
 </script>
 
-<div class="controls-container">
-  <button on:click={() => dispatch('command', 'FUNCTION Fade')}>Fade</button>
-  <button on:click={() => dispatch('command', 'FUNCTION Cut')}>Cut</button>
-  <button on:click={() => dispatch('command', 'FUNCTION Merge')}>Merge</button>
+<div class="grid-container">
   <button on:click={() => dispatch('command', 'FUNCTION Stinger1')}
     >Stinger 1</button
   >
-  <hr />
-  <button on:click={() => dispatch('refresh')}>Refresh Names</button>
+  <button on:click={() => dispatch('command', 'FUNCTION Fade')}>Fade</button>
+  <button on:click={() => dispatch('command', 'FUNCTION Merge')}>Merge</button>
+  <button on:click={() => dispatch('command', 'FUNCTION Cut')}>Cut</button>
 </div>
 
 <style>
-  .controls-container {
-    display: flex;
-    flex-direction: column;
+  .grid-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 10px;
-  }
-  hr {
-    border-color: #3c3c3c;
-    width: 100%;
-    margin: 0;
+    height: 100%;
   }
   button {
     width: 100%;
+    height: 100%;
     padding: 10px 15px;
     border-radius: 5px;
     border: 1px solid #555;
     background-color: #2d2d2d;
-    color: var(--text-color);
+    color: #eee;
     cursor: pointer;
-    transition: background-color 0.2s; /* Keep transition for potential future use */
+    transition: background-color 0.2s;
   }
-  /* The :hover pseudo-class has been removed */
+  button:hover {
+    background-color: #3f3f46;
+  }
 </style>

@@ -1,131 +1,123 @@
 <script>
-  import { onMount, setContext } from 'svelte'
-  import { writable } from 'svelte/store'
+  import { onMount } from 'svelte'
+  import {
+    panelStates,
+    inputs,
+    logMessages,
+    programInput,
+    previewInput,
+  } from './lib/stores.js'
+  import {
+    sendCommand,
+    fetchAllInputNames,
+    initializeVmixListener,
+  } from './lib/vmix.js'
+
+  import Panel from './lib/Panel.svelte'
   import Transitions from './lib/Transitions.svelte'
   import InputButton from './lib/InputButton.svelte'
   import CommandLog from './lib/CommandLog.svelte'
 
-  // Create writable stores for our app's state
-  const inputs = writable(
-    Array(8)
-      .fill(null)
-      .map((_, i) => ({
-        id: i + 1,
-        name: `Input ${i + 1}`,
-        tally: 0, // 0=off, 1=program, 2=preview
-      }))
-  )
-
-  const logMessages = writable([])
-
-  // Provide the log store to the CommandLog component
-  setContext('log', logMessages)
-
-  function addLog(message, type = 'info') {
-    const timestamp = new Date().toLocaleTimeString()
-    logMessages.update((msgs) => [...msgs, { timestamp, message, type }])
-  }
-
-  function sendCommand(command) {
-    window.electronAPI.send(command)
-    addLog(`SENT: ${command}`, 'sent')
-  }
-
-  async function fetchAllInputNames() {
-    addLog('Fetching all input names...', 'info')
-    const currentInputs = $inputs
-    const updatedInputs = await Promise.all(
-      currentInputs.map(async (input) => {
-        try {
-          const name = await window.electronAPI.getInputName(input.id)
-          return { ...input, name: name || `Input ${input.id}` }
-        } catch (e) {
-          addLog(e.message, 'error')
-          return input
-        }
-      })
-    )
-    inputs.set(updatedInputs)
-    addLog('Finished fetching names.', 'info')
-  }
-
   onMount(() => {
-    fetchAllInputNames()
-
-    window.electronAPI.receive((message) => {
-      if (message.startsWith('TALLY OK')) {
-        const tallyString = message.substring(9)
-        inputs.update((currentInputs) => {
-          return currentInputs.map((input, i) => ({
-            ...input,
-            tally: parseInt(tallyString[i] || '0', 10),
-          }))
-        })
+    const savedStates = localStorage.getItem('panelStates')
+    if (savedStates) {
+      try {
+        panelStates.set(JSON.parse(savedStates))
+      } catch {
+        console.error('Could not parse panel states from localStorage.')
       }
-      addLog(`RECV: ${message}`, 'received')
+    }
+
+    const unsubscribe = panelStates.subscribe((states) => {
+      localStorage.setItem('panelStates', JSON.stringify(states))
     })
+
+    initializeVmixListener()
+    fetchAllInputNames(50)
+
+    return () => unsubscribe()
   })
 </script>
 
-<main class="app-layout">
-  <div class="transitions-area">
-    <Transitions
-      on:command={(e) => sendCommand(e.detail)}
-      on:refresh={fetchAllInputNames}
-    />
-  </div>
+<main
+  class="h-full w-full bg-lab-metal font-sci text-neon-teal relative overflow-hidden"
+>
+  <Panel
+    id="transitions"
+    title="Transitions"
+    defaultState={{ x: 20, y: 20, width: 220, height: 200, z: 1, min: false }}
+  >
+    <Transitions on:command={(e) => sendCommand(e.detail)} />
+  </Panel>
 
-  <div class="inputs-area">
-    <div class="input-grid">
-      {#each $inputs as input (input.id)}
-        <InputButton
-          id={input.id}
-          name={input.name}
-          tally={input.tally}
-          on:command={(e) => sendCommand(e.detail)}
-        />
-      {/each}
+  <Panel
+    id="inputs"
+    title="Inputs"
+    defaultState={{ x: 260, y: 20, width: 700, height: 600, z: 1, min: false }}
+  >
+    <div slot="header-controls">
+      <button
+        class="panel-control"
+        on:click={() => fetchAllInputNames(50)}
+        title="Refresh Inputs"
+      >
+        ⟳
+      </button>
     </div>
-  </div>
 
-  <div class="log-area">
-    <CommandLog />
-  </div>
+    {#if $inputs.length > 0}
+      <div class="input-grid">
+        {#each $inputs as input (input.id)}
+          <InputButton
+            id={input.id}
+            name={input.name}
+            isProgram={input.id === $programInput}
+            isPreview={input.id === $previewInput}
+            on:command={(e) => sendCommand(e.detail)}
+          />
+        {/each}
+      </div>
+    {:else}
+      <div class="placeholder">
+        <p>No inputs found in vMix.</p>
+        <p class="subtext">
+          Add inputs in vMix, then click the refresh icon in this panel's
+          header.
+        </p>
+      </div>
+    {/if}
+  </Panel>
+
+  <Panel
+    id="log"
+    title="Command Log"
+    defaultState={{ x: 20, y: 240, width: 220, height: 380, z: 1, min: false }}
+  >
+    <CommandLog messages={$logMessages} />
+  </Panel>
 </main>
 
 <style>
-  .app-layout {
-    display: grid;
-    grid-template-columns: 220px 1fr;
-    grid-template-rows: 1fr auto;
-    grid-template-areas:
-      'transitions inputs'
-      'log         inputs';
-    gap: 20px;
-    height: calc(100vh - 40px); /* Full viewport height minus body padding */
-  }
-
-  .transitions-area {
-    grid-area: transitions;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .inputs-area {
-    grid-area: inputs;
-    display: flex; /* Use flexbox to make the grid fill the height */
-  }
-
-  .log-area {
-    grid-area: log;
-    min-height: 200px; /* Give the log a minimum height */
-  }
-
   .input-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    grid-auto-rows: minmax(90px, 1fr);
-    gap: 15px;
-    width: 100%;
+    grid-auto-rows: 90px;
+    gap: 10px;
+    height: 100%;
+  }
+
+  .placeholder {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    text-align: center;
+    color: #888;
+  }
+  .placeholder .subtext {
+    font-size: 0.9em;
+    margin-top: 8px;
+    color: #666;
   }
 </style>

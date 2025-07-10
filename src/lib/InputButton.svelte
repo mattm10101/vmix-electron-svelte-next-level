@@ -3,11 +3,12 @@
 
   export let id
   export let name
-  export let tally
+  export let isProgram = false
+  export let isPreview = false
 
   const dispatch = createEventDispatcher()
 
-  $: tallyClass = tally === 1 ? 'program' : tally === 2 ? 'preview' : ''
+  $: tallyClass = isProgram ? 'program' : isPreview ? 'preview' : ''
 </script>
 
 <button
@@ -26,30 +27,44 @@
     align-items: center;
     padding: 5px;
     line-height: 1.2;
+    text-align: center;
     word-break: break-word;
     height: 100%;
-    min-height: 80px;
     border: 2px solid #555;
+    border-radius: 6px;
     background-color: #2d2d2d;
-    color: var(--text-color);
+    color: #eee;
+    cursor: pointer;
     transition: all 0.2s ease-out;
   }
 
-  /* All hover effects have been removed. */
+  .input-btn:hover {
+    border-color: #14ffec;
+    background-color: #3f3f46;
+  }
 
   .program {
-    background-color: #28a745;
-    border-color: #57ff7d;
+    background-color: #f44747; /* Red for Program/Active */
+    border-color: #ff8a8a;
+    color: white;
   }
   .preview {
-    background-color: #fd7e14;
-    border-color: #ffaa60;
+    background-color: #34d399; /* Green for Preview */
+    border-color: #6ee7b7;
+    color: white;
   }
 
   .input-number {
-    font-size: 2em;
+    font-size: 1.75em;
     font-weight: bold;
+    color: #14ffec;
   }
+
+  .program .input-number,
+  .preview .input-number {
+    color: white;
+  }
+
   .input-name {
     font-size: 0.8em;
     margin-top: 5px;

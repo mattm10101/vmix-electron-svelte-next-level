@@ -2,113 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Base reset & background */
-html, body {
+html,
+body {
   @apply bg-lab-metal text-neon-teal font-sci h-full w-full overflow-hidden m-0 p-0;
   position: relative;
 }
 
-/* Panel wrapper */
-.panel {
-  @apply bg-lab-panel rounded-xl shadow-panel flex flex-col;
-  position: absolute;
-  resize: both;
-  overflow: hidden;
-  min-width: 200px;
-  min-height: 150px;
-  max-width: calc(100vw - 20px);
-  max-height: calc(100vh - 20px);
-  transition-property: background-color, box-shadow, transform;
-  transition-duration: 0.2s;
-  transition-timing-function: ease-in-out;
-}
-
-/* Panel header */
-.panel-header {
-  @apply bg-lab-header text-neon-teal px-4 py-2 flex justify-between items-center cursor-move;
-}
-.panel-header h2 {
-  @apply text-lg font-semibold;
-}
-.header-button {
-  @apply text-sm text-neon-blue hover:text-neon-teal cursor-pointer select-none
-         transition-transform duration-200 ease-in-out;
-}
-.header-button:hover {
-  @apply scale-110;
-}
-
-/* Panel content */
-.panel-content {
-  @apply flex-1 overflow-auto p-4;
-}
-
-/* Options container */
-.options-container {
-  @apply mb-4 p-3 bg-lab-panel/75 rounded-md flex flex-wrap gap-2;
-}
-.options-container button {
-  @apply bg-lab-header/50 text-neon-teal px-3 py-1 rounded hover:bg-lab-header transition;
-}
-
-/* Input grid */
-#inputPanelContent {
-  @apply grid gap-4 overflow-auto;
-  grid-template-columns: repeat(auto-fit, minmax(200px,1fr));
-  grid-auto-rows: minmax(0,1fr);
-}
-
-/* Input buttons */
-.input-btn {
-  @apply w-full h-full flex flex-col items-center justify-center
-         bg-lab-panel border border-neon-teal rounded-md
-         hover:shadow-glow transition-all duration-150 ease-in-out p-2;
-}
-.input-btn span.number {
-  @apply text-2xl font-bold;
-}
-.input-btn span.name {
-  @apply text-xs text-neon-blue mt-1 text-center;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  overflow: hidden;
-  white-space: normal;
-}
-
-/* Hide numbers helper */
-.hide-numbers .number {
-  display: none !important;
-}
-
-/* Transition buttons */
-.btn-trans {
-  @apply w-full h-full flex items-center justify-center py-2 rounded-md
-         bg-neon-teal/10 border border-neon-teal text-neon-teal
-         hover:bg-neon-teal/20 transition-all duration-150 ease-in-out;
-}
-
-/* PROGRAM (on-air) state */
-.program {
-  @apply bg-neon-teal text-black border-neon-teal shadow-glow !important;
-}
-
-/* PREVIEW (next-up) state */
-.preview {
-  @apply bg-orange-500 text-black border-orange-500 shadow-glow !important;
-}
-
-/* Command log */
-.log-container {
-  @apply bg-lab-panel text-neon-blue font-mono text-sm p-3 rounded-lg overflow-auto h-full;
-}
-
-/* Minimized panels */
-.panel.minimized {
-  height: 2.75rem !important;
-  min-height: 2.75rem !important;
-}
-.panel.minimized .panel-content {
-  display: none;
+#app {
+  height: 100%;
 }
