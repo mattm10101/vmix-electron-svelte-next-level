@@ -23,6 +23,7 @@
   import MasterAudioButton from './lib/MasterAudioButton.svelte'
   import Presets from './lib/Presets.svelte'
   import InputOptions from './lib/InputOptions.svelte'
+  import Scripts from './lib/Scripts.svelte'
 
   const filteredInputs = derived(
     [inputs, visibilityOptions],
@@ -93,15 +94,23 @@
   <Panel
     id="inputOptions"
     title="Input Options"
-    defaultState={{ x: 20, y: 330, width: 220, height: 310, z: 1, min: false }}
+    defaultState={{ x: 20, y: 330, width: 220, height: 360, z: 1, min: false }}
   >
     <InputOptions />
   </Panel>
 
   <Panel
+    id="scripts"
+    title="Scripts"
+    defaultState={{ x: 20, y: 700, width: 220, height: 180, z: 1, min: false }}
+  >
+    <Scripts on:command={(e) => sendCommand(e.detail)} />
+  </Panel>
+
+  <Panel
     id="presets"
     title="Presets"
-    defaultState={{ x: 20, y: 650, width: 220, height: 180, z: 1, min: false }}
+    defaultState={{ x: 20, y: 890, width: 220, height: 180, z: 1, min: false }}
   >
     <Presets
       presets={$layoutPresets}
@@ -115,7 +124,7 @@
   <Panel
     id="inputs"
     title="Inputs"
-    defaultState={{ x: 260, y: 20, width: 700, height: 810, z: 1, min: false }}
+    defaultState={{ x: 260, y: 20, width: 700, height: 1050, z: 1, min: false }}
   >
     <div slot="header-controls">
       <button
@@ -134,7 +143,8 @@
             id={input.id}
             name={input.name}
             isProgram={input.id === $programInput}
-            isPreview={input.id === $previewInput}
+            isPreview={$visibilityOptions.showPreviewLed &&
+              input.id === $previewInput}
             on:command={(e) => sendCommand(e.detail)}
           />
         {/each}
@@ -150,7 +160,7 @@
   <Panel
     id="log"
     title="Command Log"
-    defaultState={{ x: 980, y: 20, width: 280, height: 810, z: 1, min: false }}
+    defaultState={{ x: 980, y: 20, width: 280, height: 1050, z: 1, min: false }}
   >
     <CommandLog messages={$logMessages} />
   </Panel>

@@ -1,7 +1,6 @@
 <script>
   import { visibilityOptions } from './stores.js'
 
-  // Helper function to toggle a property on the options object
   function toggle(key) {
     visibilityOptions.update((opts) => ({ ...opts, [key]: !opts[key] }))
   }
@@ -10,6 +9,9 @@
 <div class="options-container">
   <button on:click={() => toggle('showNumbers')}>
     {$visibilityOptions.showNumbers ? 'Hide' : 'Show'} Numbers
+  </button>
+  <button on:click={() => toggle('showPreviewLed')}>
+    {$visibilityOptions.showPreviewLed ? 'Hide' : 'Show'} Preview LED
   </button>
   <hr />
   <button on:click={() => toggle('showL3s')}>
