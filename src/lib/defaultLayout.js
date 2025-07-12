@@ -26,7 +26,6 @@ export const defaultLayout = {
     min: false,
     visible: true,
   },
-  // 👇 NEW PANEL DEFINITION
   lowerThirds: {
     x: 20,
     y: 750,
@@ -36,29 +35,28 @@ export const defaultLayout = {
     min: false,
     visible: true,
   },
-  // 👇 ADJUSTED Y-POSITION
-  scripts: {
+  // New "Music" panel
+  music: {
     x: 20,
     y: 940,
+    width: 220,
+    height: 100,
+    z: 1,
+    min: false,
+    visible: true,
+  },
+  scripts: {
+    x: 20,
+    y: 1050,
     width: 220,
     height: 250,
     z: 1,
     min: false,
     visible: true,
   },
-  workspace: {
-    x: 20,
-    y: 1200,
-    width: 220,
-    height: 90,
-    z: 1,
-    min: false,
-    visible: true,
-  },
-  // 👇 ADJUSTED Y-POSITION
   presets: {
     x: 20,
-    y: 1300,
+    y: 1310,
     width: 220,
     height: 180,
     z: 1,
@@ -69,7 +67,7 @@ export const defaultLayout = {
     x: 260,
     y: 20,
     width: 700,
-    height: 1460,
+    height: 1470,
     z: 1,
     min: false,
     visible: true,
@@ -78,7 +76,7 @@ export const defaultLayout = {
     x: 980,
     y: 20,
     width: 280,
-    height: 1460,
+    height: 1470,
     z: 1,
     min: false,
     visible: true,

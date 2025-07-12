@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte'
+  import { onMount, onDestroy } from 'svelte'
   import { get, derived } from 'svelte/store'
   import {
     panelStates,
@@ -15,10 +15,9 @@
   } from './lib/stores.js'
   import {
     sendCommand,
-    fetchAllInputNames,
+    fetchAllInputs,
     initializeVmixListener,
   } from './lib/vmix.js'
-
   import Panel from './lib/Panel.svelte'
   import Transitions from './lib/Transitions.svelte'
   import InputButton from './lib/InputButton.svelte'
@@ -28,8 +27,11 @@
   import Presets from './lib/Presets.svelte'
   import InputOptions from './lib/InputOptions.svelte'
   import LowerThirds from './lib/LowerThirds.svelte'
+  import Music from './lib/Music.svelte'
   import Scripts from './lib/Scripts.svelte'
   import MarqueeBox from './lib/MarqueeBox.svelte'
+
+  let pollingInterval
 
   const filteredInputs = derived(
     [inputs, visibilityOptions],
@@ -47,7 +49,10 @@
 
   onMount(() => {
     initializeVmixListener()
-    fetchAllInputNames(50)
+    fetchAllInputs() // Fetch once on load
+
+    // Poll for changes every 2 seconds
+    pollingInterval = setInterval(fetchAllInputs, 2000)
 
     function handleWindowMouseDown(e) {
       if (e.target.closest('.panel')) {
@@ -55,12 +60,15 @@
       }
       startMarquee(e)
     }
-
     window.addEventListener('mousedown', handleWindowMouseDown)
-
     return () => {
       window.removeEventListener('mousedown', handleWindowMouseDown)
+      clearInterval(pollingInterval) // Clean up the interval
     }
+  })
+
+  onDestroy(() => {
+    clearInterval(pollingInterval)
   })
 
   let startX, startY
@@ -73,27 +81,21 @@
     document.addEventListener('mousemove', handleCanvasMouseMove)
     document.addEventListener('mouseup', handleCanvasMouseUp, { once: true })
   }
-
   function handleCanvasMouseMove(e) {
     const currentX = e.clientX
     const currentY = e.clientY
-
     const x = Math.min(startX, currentX)
     const y = Math.min(startY, currentY)
     const width = Math.abs(currentX - startX)
     const height = Math.abs(currentY - startY)
-
     marquee.set({ visible: true, x, y, width, height })
   }
-
   function handleCanvasMouseUp(e) {
     document.removeEventListener('mousemove', handleCanvasMouseMove)
     document.body.classList.remove('no-select')
-
     const newSelection = new Set()
     const marqueeRect = get(marquee)
     const allPanels = get(panelStates)
-
     for (const id in allPanels) {
       const panelRect = allPanels[id]
       if (
@@ -105,11 +107,9 @@
         newSelection.add(id)
       }
     }
-
     selectedPanelIds.set(newSelection)
     marquee.set({ visible: false, x: 0, y: 0, width: 0, height: 0 })
   }
-
   function handleSnapshot() {
     const currentLayout = get(panelStates)
     const presetName = `Preset ${get(layoutPresets).length + 1}`
@@ -118,18 +118,15 @@
       { id: Date.now(), name: presetName, layout: currentLayout },
     ])
   }
-
   function handleApplyPreset(event) {
     panelStates.set(event.detail)
   }
-
   function handleDeletePreset(event) {
     const idToDelete = event.detail
     layoutPresets.update((presets) =>
       presets.filter((p) => p.id !== idToDelete)
     )
   }
-
   function handleRenamePreset(event) {
     const { id, newName } = event.detail
     layoutPresets.update((presets) =>
@@ -142,7 +139,6 @@
   class="h-full w-full bg-lab-metal font-sci text-neon-teal relative overflow-hidden"
 >
   <MarqueeBox />
-
   <Panel
     id="transitions"
     title="Transitions"
@@ -150,18 +146,13 @@
   >
     <Transitions on:command={(e) => sendCommand(e.detail)} />
   </Panel>
-
   <Panel
     id="audio"
     title="Audio"
     defaultState={{ x: 20, y: 230, width: 220, height: 140, z: 1, min: false }}
   >
-    <div class="audio-controls">
-      <MasterAudioButton />
-      <MasterFader />
-    </div>
+    <div class="audio-controls"><MasterAudioButton /> <MasterFader /></div>
   </Panel>
-
   <Panel
     id="inputOptions"
     title="Input Options"
@@ -169,27 +160,31 @@
   >
     <InputOptions />
   </Panel>
-
   <Panel
     id="lowerThirds"
     title="Lower Thirds"
     defaultState={{ x: 20, y: 750, width: 220, height: 180, z: 1, min: false }}
   >
-    <LowerThirds on:command={(e) => sendCommand(e.detail)} />
+    <LowerThirds />
   </Panel>
-
+  <Panel
+    id="music"
+    title="Music"
+    defaultState={{ x: 20, y: 940, width: 220, height: 100, z: 1, min: false }}
+  >
+    <Music />
+  </Panel>
   <Panel
     id="scripts"
     title="Scripts"
-    defaultState={{ x: 20, y: 940, width: 220, height: 250, z: 1, min: false }}
+    defaultState={{ x: 20, y: 1050, width: 220, height: 250, z: 1, min: false }}
   >
     <Scripts on:command={(e) => sendCommand(e.detail)} />
   </Panel>
-
   <Panel
     id="presets"
     title="Presets"
-    defaultState={{ x: 20, y: 1200, width: 220, height: 180, z: 1, min: false }}
+    defaultState={{ x: 20, y: 1310, width: 220, height: 180, z: 1, min: false }}
   >
     <Presets
       presets={$layoutPresets}
@@ -199,20 +194,19 @@
       on:rename={handleRenamePreset}
     />
   </Panel>
-
   <Panel
     id="inputs"
     title="Inputs"
-    defaultState={{ x: 260, y: 20, width: 700, height: 1460, z: 1, min: false }}
+    defaultState={{ x: 260, y: 20, width: 700, height: 1470, z: 1, min: false }}
   >
     <div slot="header-controls">
       <button
         class="panel-control"
-        on:click={() => fetchAllInputNames(50)}
+        on:click={fetchAllInputs}
         title="Refresh Inputs">⟳</button
       >
     </div>
-    {#if $filteredInputs.length > 0}
+    {#if $inputs.length > 0}
       <div
         class="input-grid"
         class:hide-numbers={!$visibilityOptions.showNumbers}
@@ -235,18 +229,10 @@
       </div>
     {/if}
   </Panel>
-
   <Panel
     id="log"
     title="Command Log"
-    defaultState={{
-      x: 980,
-      y: 20,
-      width: 280,
-      height: 1460,
-      z: 1,
-      min: false,
-    }}
+    defaultState={{ x: 980, y: 20, width: 280, height: 1470, z: 1, min: false }}
   >
     <CommandLog messages={$logMessages} />
   </Panel>
@@ -260,7 +246,6 @@
     height: 100%;
     justify-content: space-around;
   }
-
   :global(.placeholder) {
     display: flex;
     flex-direction: column;

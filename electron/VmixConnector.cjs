@@ -7,7 +7,8 @@ class VmixConnector {
     this.mainWindow = mainWindow
     this.client = new net.Socket()
     this.isConnected = false
-    this.xmlTextPromise = { resolve: null, reject: null }
+    this.xmlPromise = { resolve: null, reject: null }
+    this.buffer = Buffer.alloc(0)
 
     this.client.on('data', (data) => this.handleData(data))
     this.client.on('close', () => this.handleClose())
@@ -22,36 +23,53 @@ class VmixConnector {
       console.log('vMix TCP Connected')
       this.isConnected = true
       this.sendCommand('SUBSCRIBE ACTS')
-      this.sendCommand('ACTS MasterAudio')
-      this.sendCommand('ACTS MasterVolume')
     })
   }
 
   handleData(data) {
-    const messages = data
-      .toString('utf8')
-      .split('\r\n')
-      .filter((msg) => msg)
-    for (const message of messages) {
-      if (this.xmlTextPromise.resolve && message.startsWith('XMLTEXT ')) {
-        if (message.startsWith('XMLTEXT OK ')) {
-          this.xmlTextPromise.resolve(message.substring(11))
-        } else {
-          this.xmlTextPromise.reject(new Error(message))
-        }
-        this.xmlTextPromise = { resolve: null, reject: null }
-      } else {
-        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-          this.mainWindow.webContents.send('from-vmix', message)
-        }
-      }
-    }
+    this.buffer = Buffer.concat([this.buffer, data])
+    this.processBuffer()
   }
 
-  handleClose() {
-    console.log('vMix TCP connection closed. Reconnecting in 5 seconds...')
-    this.isConnected = false
-    setTimeout(() => this.connect(), 5000)
+  processBuffer() {
+    while (this.buffer.length > 2) {
+      const crlfIndex = this.buffer.indexOf('\r\n')
+      if (crlfIndex === -1) {
+        break
+      }
+
+      const header = this.buffer.slice(0, crlfIndex).toString('utf8')
+      const parts = header.split(' ')
+      const command = parts[0]
+      const status = parts[1]
+
+      if (command === 'XML') {
+        const dataLength = parseInt(status, 10)
+        const totalLength = crlfIndex + 2 + dataLength
+
+        if (this.buffer.length >= totalLength) {
+          const xmlData = this.buffer
+            .slice(crlfIndex + 2, totalLength)
+            .toString('utf8')
+
+          if (this.xmlPromise.resolve) {
+            this.xmlPromise.resolve(xmlData)
+            this.xmlPromise = { resolve: null, reject: null }
+          }
+
+          this.buffer = this.buffer.slice(totalLength)
+          continue
+        } else {
+          break
+        }
+      } else {
+        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+          this.mainWindow.webContents.send('from-vmix', header)
+        }
+        this.buffer = this.buffer.slice(crlfIndex + 2)
+        continue
+      }
+    }
   }
 
   sendCommand(command) {
@@ -62,22 +80,29 @@ class VmixConnector {
     }
   }
 
-  queryXmlText(xpath) {
+  queryXml() {
     return new Promise((resolve, reject) => {
       if (!this.isConnected) return reject(new Error('vMix not connected'))
-      if (this.xmlTextPromise.resolve)
-        return reject(new Error('A request is already in progress'))
+      if (this.xmlPromise.resolve) {
+        return reject(new Error('An XML query is already in progress.'))
+      }
 
-      this.xmlTextPromise = { resolve, reject }
-      this.sendCommand(`XMLTEXT ${xpath}`)
+      this.xmlPromise = { resolve, reject }
+      this.sendCommand('XML')
 
       setTimeout(() => {
-        if (this.xmlTextPromise.reject) {
-          this.xmlTextPromise.reject(new Error(`Timeout for xpath: ${xpath}`))
-          this.xmlTextPromise = { resolve: null, reject: null }
+        if (this.xmlPromise.reject) {
+          this.xmlPromise.reject(new Error('XML query timeout'))
+          this.xmlPromise = { resolve: null, reject: null }
         }
-      }, 1500)
-    })
+      }, 3000)
+    }) // This was the line with the syntax error.
+  }
+
+  handleClose() {
+    console.log('vMix TCP connection closed. Reconnecting in 5 seconds...')
+    this.isConnected = false
+    setTimeout(() => this.connect(), 5000)
   }
 }
 

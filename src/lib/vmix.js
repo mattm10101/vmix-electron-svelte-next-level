@@ -5,14 +5,15 @@ import {
   previewInput,
   isMasterAudioMuted,
   masterVolume,
-  overlay1ActiveInput,
+  playingInputs,
 } from './stores.js'
 
 let logId = 0
 
+// This function now sends commands to our new Web API handler
 export function sendCommand(command) {
   if (window.electronAPI) {
-    window.electronAPI.send(command)
+    window.electronAPI.sendCommand(command)
     addLog(`SENT: ${command}`, 'sent')
   }
 }
@@ -28,61 +29,57 @@ export function addLog(message, type = 'info') {
   })
 }
 
-export async function fetchAllInputNames(maxInputs = 50) {
-  addLog(`Fetching up to ${maxInputs} input names...`, 'info')
+// Fetches all inputs via the new backend function
+export async function fetchAllInputs() {
+  addLog('Fetching all inputs...', 'info')
   if (!window.electronAPI) return
 
-  const fetchedInputs = []
-  for (let i = 1; i <= maxInputs; i++) {
-    try {
-      const name = await window.electronAPI.getInputName(i)
-      if (name) {
-        fetchedInputs.push({ id: i, name })
-      }
-    } catch (e) {
-      addLog(`Stopping input search at ${i - 1}.`, 'info')
-      break
-    }
+  try {
+    const fetchedInputs = await window.electronAPI.getAllInputs()
+    const processedInputs = fetchedInputs.map((input) => ({
+      ...input,
+      id: parseInt(input.number, 10),
+      name: input.title,
+      shortTitle: input.shortTitle || input.title,
+    }))
+    inputs.set(processedInputs || [])
+    addLog(`Found ${processedInputs.length || 0} inputs.`, 'info')
+  } catch (e) {
+    addLog(`Error fetching inputs: ${e.message}`, 'error')
+    inputs.set([])
   }
-  inputs.set(fetchedInputs)
-  addLog(`Found ${fetchedInputs.length} inputs.`, 'info')
 }
 
+// The real-time listener is unchanged
 export function initializeVmixListener() {
   if (window.electronAPI) {
     window.electronAPI.receive((message) => {
       addLog(`RECV: ${message}`, 'received')
-
       if (message.startsWith('ACTS OK ')) {
         const parts = message.split(' ')
-
-        // Handle MasterAudio (mute) - which has 4 parts
         if (parts.length === 4 && parts[2] === 'MasterAudio') {
-          const state = parts[3]
-          isMasterAudioMuted.set(state === '0')
-          return // Exit after handling
+          isMasterAudioMuted.set(parts[3] === '0')
+          return
         }
-
-        // Handle MasterVolume (fader) - which also has 4 parts
         if (parts.length === 4 && parts[2] === 'MasterVolume') {
-          const state = parts[3]
-          // 👇 THIS IS THE CORRECTED LINE WITH THE OFFICIAL VMIX FORMULA
-          masterVolume.set(Math.round(parseFloat(state) ** 0.25 * 100))
-          return // Exit after handling
+          masterVolume.set(Math.round(parseFloat(parts[3]) ** 0.25 * 100))
+          return
         }
-
-        // Handle tally events that have an input number - which have 5 parts
         if (parts.length >= 5) {
           const activator = parts[2]
           const inputNum = parseInt(parts[3], 10)
           const state = parts[4]
-
           if (activator === 'Input') {
             programInput.set(state === '1' ? inputNum : 0)
           } else if (activator === 'InputPreview') {
             previewInput.set(state === '1' ? inputNum : 0)
-          } else if (activator === 'Overlay1') {
-            overlay1ActiveInput.set(state === '1' ? inputNum : 0)
+          } else if (activator === 'InputPlaying') {
+            playingInputs.update((currentSet) => {
+              state === '1'
+                ? currentSet.add(inputNum)
+                : currentSet.delete(inputNum)
+              return currentSet
+            })
           }
         }
       }

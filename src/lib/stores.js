@@ -8,8 +8,8 @@ export const programInput = writable(0)
 export const previewInput = writable(0)
 export const isMasterAudioMuted = writable(false)
 export const masterVolume = writable(100)
+export const playingInputs = writable(new Set())
 
-// These stores are now initialized with our master default layout
 export const panelStates = persistentStore('panelStates', defaultLayout)
 export const layoutPresets = persistentStore('layoutPresets', [])
 
@@ -46,3 +46,6 @@ export const overlay1ActiveInput = writable(0)
 export const l3Inputs = derived(inputs, ($inputs) =>
   $inputs.filter((input) => input.name.startsWith('L3 -'))
 )
+
+// Store for the music input's state
+export const musicInputState = writable({ isMuted: false })
