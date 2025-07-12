@@ -27,6 +27,7 @@
   import MasterFader from './lib/MasterFader.svelte'
   import Presets from './lib/Presets.svelte'
   import InputOptions from './lib/InputOptions.svelte'
+  import LowerThirds from './lib/LowerThirds.svelte'
   import Scripts from './lib/Scripts.svelte'
   import MarqueeBox from './lib/MarqueeBox.svelte'
 
@@ -68,6 +69,7 @@
     startY = e.clientY
     selectedPanelIds.set(new Set())
     marquee.set({ visible: true, x: startX, y: startY, width: 0, height: 0 })
+    document.body.classList.add('no-select')
     document.addEventListener('mousemove', handleCanvasMouseMove)
     document.addEventListener('mouseup', handleCanvasMouseUp, { once: true })
   }
@@ -86,6 +88,7 @@
 
   function handleCanvasMouseUp(e) {
     document.removeEventListener('mousemove', handleCanvasMouseMove)
+    document.body.classList.remove('no-select')
 
     const newSelection = new Set()
     const marqueeRect = get(marquee)
@@ -168,9 +171,17 @@
   </Panel>
 
   <Panel
+    id="lowerThirds"
+    title="Lower Thirds"
+    defaultState={{ x: 20, y: 750, width: 220, height: 180, z: 1, min: false }}
+  >
+    <LowerThirds on:command={(e) => sendCommand(e.detail)} />
+  </Panel>
+
+  <Panel
     id="scripts"
     title="Scripts"
-    defaultState={{ x: 20, y: 750, width: 220, height: 250, z: 1, min: false }}
+    defaultState={{ x: 20, y: 940, width: 220, height: 250, z: 1, min: false }}
   >
     <Scripts on:command={(e) => sendCommand(e.detail)} />
   </Panel>
@@ -178,7 +189,7 @@
   <Panel
     id="presets"
     title="Presets"
-    defaultState={{ x: 20, y: 1010, width: 220, height: 180, z: 1, min: false }}
+    defaultState={{ x: 20, y: 1200, width: 220, height: 180, z: 1, min: false }}
   >
     <Presets
       presets={$layoutPresets}
@@ -192,7 +203,7 @@
   <Panel
     id="inputs"
     title="Inputs"
-    defaultState={{ x: 260, y: 20, width: 700, height: 1170, z: 1, min: false }}
+    defaultState={{ x: 260, y: 20, width: 700, height: 1460, z: 1, min: false }}
   >
     <div slot="header-controls">
       <button
@@ -228,7 +239,14 @@
   <Panel
     id="log"
     title="Command Log"
-    defaultState={{ x: 980, y: 20, width: 280, height: 1170, z: 1, min: false }}
+    defaultState={{
+      x: 980,
+      y: 20,
+      width: 280,
+      height: 1460,
+      z: 1,
+      min: false,
+    }}
   >
     <CommandLog messages={$logMessages} />
   </Panel>

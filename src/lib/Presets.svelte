@@ -8,12 +8,11 @@
   let editInput
 
   function runApply(presetLayout) {
-    if (editingId === null) {
+    if (renamingId === null) {
       dispatch('apply', presetLayout)
     }
   }
 
-  // NEW: Function to dispatch a 'save' event
   function savePreset(id) {
     if (
       confirm(

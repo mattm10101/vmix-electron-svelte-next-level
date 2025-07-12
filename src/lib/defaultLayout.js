@@ -26,6 +26,7 @@ export const defaultLayout = {
     min: false,
     visible: true,
   },
+  // 👇 NEW PANEL DEFINITION
   lowerThirds: {
     x: 20,
     y: 750,
@@ -35,6 +36,7 @@ export const defaultLayout = {
     min: false,
     visible: true,
   },
+  // 👇 ADJUSTED Y-POSITION
   scripts: {
     x: 20,
     y: 940,
@@ -53,6 +55,7 @@ export const defaultLayout = {
     min: false,
     visible: true,
   },
+  // 👇 ADJUSTED Y-POSITION
   presets: {
     x: 20,
     y: 1300,

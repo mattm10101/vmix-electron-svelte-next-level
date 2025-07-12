@@ -4,6 +4,7 @@
 
   export let id
   export let title
+  export let defaultState
 
   $: state = $panelStates[id]
   const titleId = `panel-title-${id}`
@@ -12,6 +13,13 @@
   let initialDragPositions = new Map()
 
   onMount(() => {
+    if (!state && defaultState) {
+      panelStates.update((allStates) => {
+        allStates[id] = { ...defaultState, title: title }
+        return allStates
+      })
+    }
+
     let isDragging = false
     let isResizing = false
     let startMouseX, startMouseY
@@ -25,6 +33,7 @@
         isResizing = true
       } else if (header && !e.target.closest('.panel-control')) {
         isDragging = true
+        document.body.classList.add('no-select') // 👈 ADD THIS
         startMouseX = e.clientX
         startMouseY = e.clientY
 
@@ -69,6 +78,9 @@
     }
 
     function onMouseUp() {
+      if (isDragging) {
+        document.body.classList.remove('no-select') // 👈 ADD THIS
+      }
       isDragging = false
       isResizing = false
       document.removeEventListener('mousemove', onMouseMove)
