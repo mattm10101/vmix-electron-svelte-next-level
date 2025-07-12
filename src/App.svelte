@@ -9,6 +9,9 @@
     previewInput,
     layoutPresets,
     visibilityOptions,
+    marquee,
+    selectedPanelIds,
+    scriptManager,
   } from './lib/stores.js'
   import {
     sendCommand,
@@ -21,9 +24,11 @@
   import InputButton from './lib/InputButton.svelte'
   import CommandLog from './lib/CommandLog.svelte'
   import MasterAudioButton from './lib/MasterAudioButton.svelte'
+  import MasterFader from './lib/MasterFader.svelte'
   import Presets from './lib/Presets.svelte'
   import InputOptions from './lib/InputOptions.svelte'
   import Scripts from './lib/Scripts.svelte'
+  import MarqueeBox from './lib/MarqueeBox.svelte'
 
   const filteredInputs = derived(
     [inputs, visibilityOptions],
@@ -42,7 +47,65 @@
   onMount(() => {
     initializeVmixListener()
     fetchAllInputNames(50)
+
+    function handleWindowMouseDown(e) {
+      if (e.target.closest('.panel')) {
+        return
+      }
+      startMarquee(e)
+    }
+
+    window.addEventListener('mousedown', handleWindowMouseDown)
+
+    return () => {
+      window.removeEventListener('mousedown', handleWindowMouseDown)
+    }
   })
+
+  let startX, startY
+  function startMarquee(e) {
+    startX = e.clientX
+    startY = e.clientY
+    selectedPanelIds.set(new Set())
+    marquee.set({ visible: true, x: startX, y: startY, width: 0, height: 0 })
+    document.addEventListener('mousemove', handleCanvasMouseMove)
+    document.addEventListener('mouseup', handleCanvasMouseUp, { once: true })
+  }
+
+  function handleCanvasMouseMove(e) {
+    const currentX = e.clientX
+    const currentY = e.clientY
+
+    const x = Math.min(startX, currentX)
+    const y = Math.min(startY, currentY)
+    const width = Math.abs(currentX - startX)
+    const height = Math.abs(currentY - startY)
+
+    marquee.set({ visible: true, x, y, width, height })
+  }
+
+  function handleCanvasMouseUp(e) {
+    document.removeEventListener('mousemove', handleCanvasMouseMove)
+
+    const newSelection = new Set()
+    const marqueeRect = get(marquee)
+    const allPanels = get(panelStates)
+
+    for (const id in allPanels) {
+      const panelRect = allPanels[id]
+      if (
+        marqueeRect.x < panelRect.x + panelRect.width &&
+        marqueeRect.x + marqueeRect.width > panelRect.x &&
+        marqueeRect.y < panelRect.y + panelRect.height &&
+        marqueeRect.y + marqueeRect.height > panelRect.y
+      ) {
+        newSelection.add(id)
+      }
+    }
+
+    selectedPanelIds.set(newSelection)
+    marquee.set({ visible: false, x: 0, y: 0, width: 0, height: 0 })
+  }
 
   function handleSnapshot() {
     const currentLayout = get(panelStates)
@@ -72,9 +135,11 @@
   }
 </script>
 
-<main
+<div
   class="h-full w-full bg-lab-metal font-sci text-neon-teal relative overflow-hidden"
 >
+  <MarqueeBox />
+
   <Panel
     id="transitions"
     title="Transitions"
@@ -86,15 +151,18 @@
   <Panel
     id="audio"
     title="Audio"
-    defaultState={{ x: 20, y: 230, width: 220, height: 90, z: 1, min: false }}
+    defaultState={{ x: 20, y: 230, width: 220, height: 140, z: 1, min: false }}
   >
-    <MasterAudioButton />
+    <div class="audio-controls">
+      <MasterAudioButton />
+      <MasterFader />
+    </div>
   </Panel>
 
   <Panel
     id="inputOptions"
     title="Input Options"
-    defaultState={{ x: 20, y: 330, width: 220, height: 360, z: 1, min: false }}
+    defaultState={{ x: 20, y: 380, width: 220, height: 360, z: 1, min: false }}
   >
     <InputOptions />
   </Panel>
@@ -102,7 +170,7 @@
   <Panel
     id="scripts"
     title="Scripts"
-    defaultState={{ x: 20, y: 700, width: 220, height: 180, z: 1, min: false }}
+    defaultState={{ x: 20, y: 750, width: 220, height: 250, z: 1, min: false }}
   >
     <Scripts on:command={(e) => sendCommand(e.detail)} />
   </Panel>
@@ -110,7 +178,7 @@
   <Panel
     id="presets"
     title="Presets"
-    defaultState={{ x: 20, y: 890, width: 220, height: 180, z: 1, min: false }}
+    defaultState={{ x: 20, y: 1010, width: 220, height: 180, z: 1, min: false }}
   >
     <Presets
       presets={$layoutPresets}
@@ -124,7 +192,7 @@
   <Panel
     id="inputs"
     title="Inputs"
-    defaultState={{ x: 260, y: 20, width: 700, height: 1050, z: 1, min: false }}
+    defaultState={{ x: 260, y: 20, width: 700, height: 1170, z: 1, min: false }}
   >
     <div slot="header-controls">
       <button
@@ -160,13 +228,21 @@
   <Panel
     id="log"
     title="Command Log"
-    defaultState={{ x: 980, y: 20, width: 280, height: 1050, z: 1, min: false }}
+    defaultState={{ x: 980, y: 20, width: 280, height: 1170, z: 1, min: false }}
   >
     <CommandLog messages={$logMessages} />
   </Panel>
-</main>
+</div>
 
 <style>
+  :global(.audio-controls) {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    height: 100%;
+    justify-content: space-around;
+  }
+
   :global(.placeholder) {
     display: flex;
     flex-direction: column;

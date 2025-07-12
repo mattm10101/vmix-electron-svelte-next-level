@@ -1,36 +1,20 @@
 <script>
   import { onMount } from 'svelte'
-  import { panelStates } from './stores.js'
+  import { panelStates, selectedPanelIds } from './stores.js'
 
   export let id
   export let title
-  export let defaultState = {
-    x: 20,
-    y: 20,
-    width: 400,
-    height: 300,
-    z: 1,
-    min: false,
-  }
 
-  $: title
+  $: state = $panelStates[id]
   const titleId = `panel-title-${id}`
 
-  $: state = $panelStates[id] || defaultState
-
   let panelElement
+  let initialDragPositions = new Map()
 
   onMount(() => {
-    panelStates.update((allStates) => {
-      if (!allStates[id]) {
-        return { ...allStates, [id]: defaultState }
-      }
-      return allStates
-    })
-
     let isDragging = false
     let isResizing = false
-    let dragOffsetX, dragOffsetY
+    let startMouseX, startMouseY
 
     function onMouseDown(e) {
       const resizeHandle = e.target.closest('.resize-handle')
@@ -41,8 +25,17 @@
         isResizing = true
       } else if (header && !e.target.closest('.panel-control')) {
         isDragging = true
-        dragOffsetX = e.clientX - state.x
-        dragOffsetY = e.clientY - state.y
+        startMouseX = e.clientX
+        startMouseY = e.clientY
+
+        if (!$selectedPanelIds.has(id)) {
+          selectedPanelIds.set(new Set([id]))
+        }
+
+        initialDragPositions.clear()
+        $selectedPanelIds.forEach((panelId) => {
+          initialDragPositions.set(panelId, { ...$panelStates[panelId] })
+        })
       } else {
         return
       }
@@ -54,15 +47,18 @@
 
     function onMouseMove(e) {
       if (isDragging) {
-        updateStore({
-          x: Math.max(
-            0,
-            Math.min(e.clientX - dragOffsetX, window.innerWidth - state.width)
-          ),
-          y: Math.max(
-            0,
-            Math.min(e.clientY - dragOffsetY, window.innerHeight - state.height)
-          ),
+        const dx = e.clientX - startMouseX
+        const dy = e.clientY - startMouseY
+
+        panelStates.update((allStates) => {
+          $selectedPanelIds.forEach((panelId) => {
+            const initialPos = initialDragPositions.get(panelId)
+            if (initialPos && allStates[panelId]) {
+              allStates[panelId].x = Math.max(0, initialPos.x + dx)
+              allStates[panelId].y = Math.max(0, initialPos.y + dy)
+            }
+          })
+          return allStates
         })
       } else if (isResizing) {
         updateStore({
@@ -90,21 +86,26 @@
   function updateStore(partialState) {
     panelStates.update((allStates) => {
       if (allStates[id]) {
-        return {
-          ...allStates,
-          [id]: {
-            ...allStates[id],
-            ...partialState,
-          },
-        }
+        allStates[id] = { ...allStates[id], ...partialState }
       }
       return allStates
     })
   }
 
   function bringToFront() {
-    const maxZ = Math.max(0, ...Object.values($panelStates).map((p) => p.z))
-    updateStore({ z: maxZ + 1 })
+    const maxZ = Math.max(
+      0,
+      ...Object.values($panelStates).map((p) => p.z || 0)
+    )
+
+    panelStates.update((allStates) => {
+      $selectedPanelIds.forEach((panelId) => {
+        if (allStates[panelId]) {
+          allStates[panelId].z = maxZ + 1
+        }
+      })
+      return allStates
+    })
   }
 
   function handleResizeKeydown(e) {
@@ -132,9 +133,10 @@
 
 <div
   class="panel"
-  class:minimized={state.min}
+  class:minimized={state?.min}
+  class:selected={$selectedPanelIds.has(id)}
   bind:this={panelElement}
-  style="left: {state.x}px; top: {state.y}px; width: {state.width}px; height: {state.height}px; z-index: {state.z};"
+  style="left: {state?.x}px; top: {state?.y}px; width: {state?.width}px; height: {state?.height}px; z-index: {state?.z};"
   role="dialog"
   aria-labelledby={titleId}
   tabindex="-1"
@@ -146,7 +148,7 @@
       <button
         class="panel-control"
         on:click|stopPropagation={toggleMinimized}
-        aria-label="Toggle panel minimization">{state.min ? '⧄' : '—'}</button
+        aria-label="Toggle panel minimization">{state?.min ? '⧄' : '—'}</button
       >
     </div>
   </div>
@@ -174,6 +176,10 @@
   }
   .panel.minimized {
     height: 41px !important;
+  }
+  .panel.selected {
+    border-color: #00d0ff;
+    box-shadow: 0 0 15px rgba(0, 208, 255, 0.6);
   }
   .panel-header {
     display: flex;

@@ -1,10 +1,7 @@
-// electron/main.cjs
 const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
-// highlight-next-line
-const VmixConnector = require('./VmixConnector.cjs') // Updated file extension
+const VmixConnector = require('./VmixConnector.cjs')
 
-// vMix connection settings
 const VMIX_HOST = '127.0.0.1'
 const VMIX_TCP_PORT = 8099
 
@@ -34,7 +31,6 @@ function createWindow() {
   }
 }
 
-// App lifecycle
 app.whenReady().then(createWindow)
 
 app.on('window-all-closed', () => {
@@ -43,7 +39,6 @@ app.on('window-all-closed', () => {
   }
 })
 
-// IPC handlers
 ipcMain.on('to-vmix', (_, command) => {
   vmixConnector.sendCommand(command)
 })

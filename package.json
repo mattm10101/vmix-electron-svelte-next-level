@@ -1,6 +1,6 @@
 {
   "name": "vmix-alchemy-lab",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
@@ -11,14 +11,13 @@
   },
   "dependencies": {
     "electron": "^25.0.0",
-    "svelte": "^5.35.2"
+    "svelte": "^5.0.0-next.1"
   },
   "devDependencies": {
-    "@sveltejs/vite-plugin-svelte": "^4.0.0-next.6",
-    "autoprefixer": "^10.4.0",
-    "path": "^0.12.7",
-    "postcss": "^8.4.0",
-    "tailwindcss": "^3.4.0",
-    "vite": "^5.4.19"
+    "@sveltejs/vite-plugin-svelte": "^3.0.0",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.3",
+    "vite": "^5.0.0"
   }
 }

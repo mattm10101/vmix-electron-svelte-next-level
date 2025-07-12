@@ -1,11 +1,5 @@
 import { writable } from 'svelte/store'
 
-/**
- * Creates a Svelte store that automatically persists its value to localStorage.
- * @param {string} key The key to use in localStorage.
- * @param {any} initialValue The initial value of the store if nothing is in localStorage.
- * @returns A Svelte writable store.
- */
 export function persistentStore(key, initialValue) {
   let initialData = initialValue
   try {
@@ -14,7 +8,6 @@ export function persistentStore(key, initialValue) {
       initialData = JSON.parse(storedValue)
     }
   } catch {
-    // If parsing fails, fall back to the initial value
     initialData = initialValue
   }
 

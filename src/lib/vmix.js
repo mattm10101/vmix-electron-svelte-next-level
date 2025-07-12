@@ -4,6 +4,8 @@ import {
   programInput,
   previewInput,
   isMasterAudioMuted,
+  masterVolume,
+  overlay1ActiveInput,
 } from './stores.js'
 
 let logId = 0
@@ -56,7 +58,6 @@ export function initializeVmixListener() {
 
         if (parts.length === 4 && parts[2] === 'MasterAudio') {
           const state = parts[3]
-          // THIS IS THE FIX: Muted is true when the state is '0'
           isMasterAudioMuted.set(state === '0')
           return
         }
@@ -70,6 +71,10 @@ export function initializeVmixListener() {
             programInput.set(state === '1' ? inputNum : 0)
           } else if (activator === 'InputPreview') {
             previewInput.set(state === '1' ? inputNum : 0)
+          } else if (activator === 'MasterVolume') {
+            masterVolume.set(parseInt(state, 10))
+          } else if (activator === 'Overlay1') {
+            overlay1ActiveInput.set(state === '1' ? inputNum : 0)
           }
         }
       }

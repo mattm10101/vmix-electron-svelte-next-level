@@ -5,21 +5,34 @@
   const dispatch = createEventDispatcher()
 
   let renamingId = null
-  let tempName = ''
-  let renameInput
+  let editInput
 
-  async function startRename(preset) {
-    renamingId = preset.id
-    tempName = preset.name
-    await tick()
-    renameInput.focus()
+  function runApply(presetLayout) {
+    if (editingId === null) {
+      dispatch('apply', presetLayout)
+    }
   }
 
-  function commitRename() {
-    if (renamingId && tempName) {
-      dispatch('rename', { id: renamingId, newName: tempName })
+  // NEW: Function to dispatch a 'save' event
+  function savePreset(id) {
+    if (
+      confirm(
+        'Are you sure you want to overwrite this preset with the current layout?'
+      )
+    ) {
+      dispatch('save', id)
     }
-    renamingId = null
+  }
+
+  async function startEditing(preset) {
+    renamingId = preset.id
+    await tick()
+    editInput?.focus()
+    editInput?.select()
+  }
+
+  function handleNameChange(id, newName) {
+    dispatch('rename', { id, newName })
   }
 
   function deletePreset(id) {
@@ -35,29 +48,35 @@
   </button>
   <hr />
   <div class="presets-list">
-    {#each presets as preset, i (preset.id)}
+    {#each presets as preset (preset.id)}
       <div class="preset-row">
         {#if renamingId === preset.id}
           <input
             type="text"
-            bind:value={tempName}
-            on:blur={commitRename}
-            on:keydown={(e) => e.key === 'Enter' && commitRename()}
             class="rename-input"
-            bind:this={renameInput}
+            value={preset.name}
+            bind:this={editInput}
+            on:input={(e) => handleNameChange(preset.id, e.target.value)}
+            on:blur={() => (renamingId = null)}
+            on:keydown={(e) => e.key === 'Enter' && e.target.blur()}
           />
         {:else}
           <button
             class="preset-btn"
-            on:click={() => dispatch('apply', preset.layout)}
-            on:dblclick={() => startRename(preset)}
+            on:click={() => runApply(preset.layout)}
+            on:dblclick={() => startEditing(preset)}
           >
             {preset.name}
           </button>
-          <button class="delete-btn" on:click={() => deletePreset(preset.id)}>
-            X
-          </button>
         {/if}
+        <button
+          class="save-btn"
+          on:click={() => savePreset(preset.id)}
+          title="Overwrite Preset">💾</button
+        >
+        <button class="delete-btn" on:click={() => deletePreset(preset.id)}
+          >X</button
+        >
       </div>
     {/each}
   </div>
@@ -99,7 +118,7 @@
   }
   .preset-row {
     display: flex;
-    gap: 8px;
+    gap: 5px;
     align-items: center;
   }
   .preset-btn {
@@ -112,6 +131,9 @@
     color: #eee;
     cursor: pointer;
     transition: background-color 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .preset-btn:hover {
     background-color: #3f3f46;
@@ -123,19 +145,32 @@
     border: 1px solid #14ffec;
     background: #1f1f23;
     color: white;
+    font-size: 1em;
   }
+  .rename-input:focus {
+    outline: none;
+  }
+
+  .save-btn,
   .delete-btn {
-    background: #5d1b1b;
-    color: #f5c6c6;
-    border: 1px solid #c53030;
+    background: #3f3f46;
+    border: 1px solid #555;
+    color: #ccc;
     border-radius: 5px;
     width: 35px;
     height: 35px;
+    flex-shrink: 0;
     cursor: pointer;
     transition: background-color 0.2s;
+    font-size: 1.1em;
+    padding: 0;
+  }
+  .save-btn:hover {
+    background-color: #2b6cb0;
+    color: white;
   }
   .delete-btn:hover {
-    background: #c53030;
+    background-color: #c53030;
     color: white;
   }
 </style>
