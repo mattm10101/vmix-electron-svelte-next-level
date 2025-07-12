@@ -18,18 +18,24 @@ function createWindow() {
   const vmixConnector = new VmixConnector(VMIX_HOST, VMIX_TCP_PORT, mainWindow)
   vmixConnector.connect()
 
-  // Set up all communication channels AFTER the connector is created
   ipcMain.on('to-vmix', (_, command) => {
     vmixConnector.sendCommand(command)
+  })
+
+  // NEW: IPC handler for XPath queries
+  ipcMain.handle('query-xpath', async (_, xpath) => {
+    try {
+      return await vmixConnector.queryXpath(xpath)
+    } catch (error) {
+      console.error(`XPath query failed for "${xpath}":`, error)
+      return null
+    }
   })
 
   ipcMain.handle('get-all-inputs', async () => {
     try {
       const xmlData = await vmixConnector.queryXml()
-      if (!xmlData) {
-        console.error('Received empty XML data from vMix.')
-        return []
-      }
+      if (!xmlData) return []
 
       const parser = new XMLParser({
         ignoreAttributes: false,
@@ -37,16 +43,37 @@ function createWindow() {
       })
       const vmixObj = parser.parse(xmlData)
 
-      if (!vmixObj || !vmixObj.vmix || !vmixObj.vmix.inputs) {
-        console.log('No <inputs> tag found in vMix XML. Assuming no inputs.')
-        return []
-      }
-
+      if (!vmixObj?.vmix?.inputs?.input) return []
       let inputs = vmixObj.vmix.inputs.input
-      if (!inputs) return []
       if (!Array.isArray(inputs)) inputs = [inputs]
 
-      return inputs
+      return inputs.map((input) => {
+        let items = []
+        if (input.list && input.list.item) {
+          const rawItems = Array.isArray(input.list.item)
+            ? input.list.item
+            : [input.list.item]
+          items = rawItems.map((item, index) => {
+            const isObject = typeof item === 'object' && item !== null
+            const itemName = isObject ? item['#text'] : item
+            return {
+              id: `${input.key}-${index}`, // Use input key for more stable ID
+              name: path.basename(itemName || ''),
+              selected: isObject ? item.selected === 'true' : false,
+            }
+          })
+        }
+        return {
+          id: parseInt(input.number, 10),
+          key: input.key,
+          title: input.title,
+          shortTitle: input.shortTitle || input.title,
+          state: input.state,
+          muted: String(input.muted).toLowerCase() === 'true',
+          selectedIndex: parseInt(input.selectedIndex, 10),
+          list: items,
+        }
+      })
     } catch (error) {
       console.error('Failed to get all inputs:', error)
       return []

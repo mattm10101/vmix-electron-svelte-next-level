@@ -10,78 +10,87 @@ import {
 
 let logId = 0
 
-// This function now sends commands to our new Web API handler
-export function sendCommand(command) {
-  if (window.electronAPI) {
-    window.electronAPI.sendCommand(command)
-    addLog(`SENT: ${command}`, 'sent')
-  }
-}
-
-export function addLog(message, type = 'info') {
+function addLog(message, type = 'info') {
   const timestamp = new Date().toLocaleTimeString()
   logMessages.update((currentMessages) => {
-    currentMessages.push({ id: logId++, timestamp, message, type })
-    if (currentMessages.length > 200) {
-      currentMessages.shift()
-    }
-    return currentMessages
+    const newLog = [
+      ...currentMessages,
+      { id: logId++, timestamp, message, type },
+    ]
+    if (newLog.length > 200) return newLog.slice(newLog.length - 200)
+    return newLog
   })
 }
 
-// Fetches all inputs via the new backend function
-export async function fetchAllInputs() {
-  addLog('Fetching all inputs...', 'info')
-  if (!window.electronAPI) return
+export function sendCommand(command) {
+  if (!window.electronAPI)
+    return addLog('ERROR: electronAPI is not available.', 'error')
+  window.electronAPI.sendCommand(command)
+  addLog(`SENT: ${command}`, 'sent')
+}
 
+export async function fetchAllInputs() {
+  if (!window.electronAPI)
+    return addLog('ERROR: electronAPI is not available.', 'error')
+  addLog('Fetching all inputs...', 'info')
   try {
     const fetchedInputs = await window.electronAPI.getAllInputs()
-    const processedInputs = fetchedInputs.map((input) => ({
-      ...input,
-      id: parseInt(input.number, 10),
-      name: input.title,
-      shortTitle: input.shortTitle || input.title,
-    }))
-    inputs.set(processedInputs || [])
-    addLog(`Found ${processedInputs.length || 0} inputs.`, 'info')
+    inputs.set(fetchedInputs || [])
+    addLog(`Found ${fetchedInputs.length || 0} inputs.`, 'info')
   } catch (e) {
     addLog(`Error fetching inputs: ${e.message}`, 'error')
     inputs.set([])
   }
 }
 
-// The real-time listener is unchanged
+// NEW: Helper function to query a single value from vMix using XPath
+export async function queryVmixXpath(xpath) {
+  if (!window.electronAPI) {
+    addLog('ERROR: electronAPI is not available.', 'error')
+    return null
+  }
+  try {
+    const value = await window.electronAPI.queryXpath(xpath)
+    addLog(`XPATH RECV: ${xpath} = ${value}`, 'received')
+    return value
+  } catch (e) {
+    addLog(`Error in XPath query: ${e.message}`, 'error')
+    return null
+  }
+}
+
 export function initializeVmixListener() {
   if (window.electronAPI) {
     window.electronAPI.receive((message) => {
       addLog(`RECV: ${message}`, 'received')
-      if (message.startsWith('ACTS OK ')) {
-        const parts = message.split(' ')
-        if (parts.length === 4 && parts[2] === 'MasterAudio') {
+      if (!message.startsWith('ACTS OK ')) return
+
+      const parts = message.split(' ')
+      const activator = parts[2]
+      const inputNum = parseInt(parts[3], 10)
+      const state = parts.length > 4 ? parts[4] : undefined
+
+      switch (activator) {
+        case 'Input':
+          programInput.set(state === '1' ? inputNum : 0)
+          break
+        case 'InputPreview':
+          previewInput.set(state === '1' ? inputNum : 0)
+          break
+        case 'InputPlaying':
+          playingInputs.update((currentSet) => {
+            state === '1'
+              ? currentSet.add(inputNum)
+              : currentSet.delete(inputNum)
+            return new Set(currentSet)
+          })
+          break
+        case 'MasterAudio':
           isMasterAudioMuted.set(parts[3] === '0')
-          return
-        }
-        if (parts.length === 4 && parts[2] === 'MasterVolume') {
+          break
+        case 'MasterVolume':
           masterVolume.set(Math.round(parseFloat(parts[3]) ** 0.25 * 100))
-          return
-        }
-        if (parts.length >= 5) {
-          const activator = parts[2]
-          const inputNum = parseInt(parts[3], 10)
-          const state = parts[4]
-          if (activator === 'Input') {
-            programInput.set(state === '1' ? inputNum : 0)
-          } else if (activator === 'InputPreview') {
-            previewInput.set(state === '1' ? inputNum : 0)
-          } else if (activator === 'InputPlaying') {
-            playingInputs.update((currentSet) => {
-              state === '1'
-                ? currentSet.add(inputNum)
-                : currentSet.delete(inputNum)
-              return currentSet
-            })
-          }
-        }
+          break
       }
     })
     addLog('vMix Activator listener initialized.', 'info')

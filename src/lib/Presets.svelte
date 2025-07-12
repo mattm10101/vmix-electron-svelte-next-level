@@ -1,25 +1,18 @@
 <script>
-  import { createEventDispatcher, tick } from 'svelte'
+  import { tick } from 'svelte'
 
   export let presets = []
-  const dispatch = createEventDispatcher()
+  export let onSnapshot = () => {}
+  export let onApply = (detail) => {}
+  export let onDelete = (detail) => {}
+  export let onRename = (detail) => {}
 
   let renamingId = null
   let editInput
 
   function runApply(presetLayout) {
     if (renamingId === null) {
-      dispatch('apply', presetLayout)
-    }
-  }
-
-  function savePreset(id) {
-    if (
-      confirm(
-        'Are you sure you want to overwrite this preset with the current layout?'
-      )
-    ) {
-      dispatch('save', id)
+      onApply(presetLayout)
     }
   }
 
@@ -31,20 +24,16 @@
   }
 
   function handleNameChange(id, newName) {
-    dispatch('rename', { id, newName })
+    onRename({ id, newName })
   }
 
-  function deletePreset(id) {
-    if (confirm('Are you sure you want to delete this preset?')) {
-      dispatch('delete', id)
-    }
+  function commitEdit() {
+    renamingId = null
   }
 </script>
 
 <div class="presets-container">
-  <button class="snapshot-btn" on:click={() => dispatch('snapshot')}>
-    Snapshot
-  </button>
+  <button class="snapshot-btn" on:click={onSnapshot}> Snapshot </button>
   <hr />
   <div class="presets-list">
     {#each presets as preset (preset.id)}
@@ -56,8 +45,8 @@
             value={preset.name}
             bind:this={editInput}
             on:input={(e) => handleNameChange(preset.id, e.target.value)}
-            on:blur={() => (renamingId = null)}
-            on:keydown={(e) => e.key === 'Enter' && e.target.blur()}
+            on:blur={commitEdit}
+            on:keydown={(e) => e.key === 'Enter' && commitEdit()}
           />
         {:else}
           <button
@@ -68,12 +57,7 @@
             {preset.name}
           </button>
         {/if}
-        <button
-          class="save-btn"
-          on:click={() => savePreset(preset.id)}
-          title="Overwrite Preset">💾</button
-        >
-        <button class="delete-btn" on:click={() => deletePreset(preset.id)}
+        <button class="delete-btn" on:click={() => onDelete(preset.id)}
           >X</button
         >
       </div>
@@ -149,8 +133,6 @@
   .rename-input:focus {
     outline: none;
   }
-
-  .save-btn,
   .delete-btn {
     background: #3f3f46;
     border: 1px solid #555;
@@ -161,12 +143,6 @@
     flex-shrink: 0;
     cursor: pointer;
     transition: background-color 0.2s;
-    font-size: 1.1em;
-    padding: 0;
-  }
-  .save-btn:hover {
-    background-color: #2b6cb0;
-    color: white;
   }
   .delete-btn:hover {
     background-color: #c53030;

@@ -1,15 +1,12 @@
 <script>
-  import { createEventDispatcher } from 'svelte'
-  const dispatch = createEventDispatcher()
+  export let onCommand = (detail) => {}
 </script>
 
 <div class="grid-container">
-  <button on:click={() => dispatch('command', 'FUNCTION Stinger1')}
-    >Stinger 1</button
-  >
-  <button on:click={() => dispatch('command', 'FUNCTION Fade')}>Fade</button>
-  <button on:click={() => dispatch('command', 'FUNCTION Merge')}>Merge</button>
-  <button on:click={() => dispatch('command', 'FUNCTION Cut')}>Cut</button>
+  <button on:click={() => onCommand('FUNCTION Stinger1')}>Stinger 1</button>
+  <button on:click={() => onCommand('FUNCTION Fade')}>Fade</button>
+  <button on:click={() => onCommand('FUNCTION Merge')}>Merge</button>
+  <button on:click={() => onCommand('FUNCTION Cut')}>Cut</button>
 </div>
 
 <style>

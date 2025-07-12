@@ -1,20 +1,16 @@
 <script>
-  import { createEventDispatcher } from 'svelte'
-  import { get } from 'svelte/store' // 👈 1. Import 'get'
+  import { get } from 'svelte/store'
   import { l3Inputs, overlay1ActiveInput } from './stores.js'
 
-  const dispatch = createEventDispatcher()
+  export let onCommand = (detail) => {}
 
-  // 👇 2. This function is now smarter
   function toggleOverlay(inputId) {
     const currentlyActiveId = get(overlay1ActiveInput)
 
     if (currentlyActiveId === inputId) {
-      // If the button clicked is already on, send the specific OFF command.
-      dispatch('command', `FUNCTION OverlayInput1Off Input=${inputId}`)
+      onCommand(`FUNCTION OverlayInput1Off Input=${inputId}`)
     } else {
-      // Otherwise, turn the selected one on.
-      dispatch('command', `FUNCTION OverlayInput1 Input=${inputId}`)
+      onCommand(`FUNCTION OverlayInput1 Input=${inputId}`)
     }
   }
 </script>
@@ -26,8 +22,9 @@
         class="l3-btn"
         class:blinking={$overlay1ActiveInput === l3.id}
         on:click={() => toggleOverlay(l3.id)}
+        title={l3.title}
       >
-        {l3.name.replace('L3 - ', '')}
+        {l3.title.replace('L3 - ', '')}
       </button>
     {/each}
   {:else}
@@ -47,7 +44,6 @@
       background-color: #c53030;
     }
   }
-
   .l3-container {
     display: flex;
     flex-direction: column;

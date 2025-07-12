@@ -1,14 +1,13 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
-contextBridge.exposeInMainWorld('electronAPI', {
-  // This is the critical change. It sends all commands over the TCP connection.
-  sendCommand: (command) => ipcRenderer.send('to-vmix', command),
+console.log('✅ Preload script has been loaded!')
 
-  // For receiving real-time TCP events
+contextBridge.exposeInMainWorld('electronAPI', {
+  sendCommand: (command) => ipcRenderer.send('to-vmix', command),
   receive: (callback) => {
     ipcRenderer.on('from-vmix', (_ev, data) => callback(data))
   },
-
-  // For getting the full list of inputs
   getAllInputs: () => ipcRenderer.invoke('get-all-inputs'),
+  // NEW: Exposing the XPath query function
+  queryXpath: (xpath) => ipcRenderer.invoke('query-xpath', xpath),
 })

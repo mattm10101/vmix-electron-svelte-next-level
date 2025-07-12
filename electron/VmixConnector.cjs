@@ -7,8 +7,10 @@ class VmixConnector {
     this.mainWindow = mainWindow
     this.client = new net.Socket()
     this.isConnected = false
-    this.xmlPromise = { resolve: null, reject: null }
     this.buffer = Buffer.alloc(0)
+
+    // Store promises for different command types
+    this.pendingQueries = new Map()
 
     this.client.on('data', (data) => this.handleData(data))
     this.client.on('close', () => this.handleClose())
@@ -34,12 +36,10 @@ class VmixConnector {
   processBuffer() {
     while (this.buffer.length > 2) {
       const crlfIndex = this.buffer.indexOf('\r\n')
-      if (crlfIndex === -1) {
-        break
-      }
+      if (crlfIndex === -1) break
 
-      const header = this.buffer.slice(0, crlfIndex).toString('utf8')
-      const parts = header.split(' ')
+      const line = this.buffer.slice(0, crlfIndex).toString('utf8')
+      const parts = line.split(' ')
       const command = parts[0]
       const status = parts[1]
 
@@ -51,24 +51,27 @@ class VmixConnector {
           const xmlData = this.buffer
             .slice(crlfIndex + 2, totalLength)
             .toString('utf8')
-
-          if (this.xmlPromise.resolve) {
-            this.xmlPromise.resolve(xmlData)
-            this.xmlPromise = { resolve: null, reject: null }
+          if (this.pendingQueries.has('XML')) {
+            this.pendingQueries.get('XML').resolve(xmlData)
+            this.pendingQueries.delete('XML')
           }
-
           this.buffer = this.buffer.slice(totalLength)
           continue
         } else {
-          break
+          break // Wait for more data
         }
-      } else {
+      } else if (command === 'XMLTEXT' && this.pendingQueries.has('XMLTEXT')) {
+        const responseValue = parts.slice(2).join(' ')
+        this.pendingQueries.get('XMLTEXT').resolve(responseValue)
+        this.pendingQueries.delete('XMLTEXT')
+      } else if (command === 'ACTS' || command === 'TALLY') {
         if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-          this.mainWindow.webContents.send('from-vmix', header)
+          this.mainWindow.webContents.send('from-vmix', line)
         }
-        this.buffer = this.buffer.slice(crlfIndex + 2)
-        continue
       }
+      // For all other single-line responses like FUNCTION OK, we can just consume them.
+
+      this.buffer = this.buffer.slice(crlfIndex + 2)
     }
   }
 
@@ -80,28 +83,45 @@ class VmixConnector {
     }
   }
 
-  queryXml() {
+  _createPendingQuery(key, timeout = 3000) {
     return new Promise((resolve, reject) => {
       if (!this.isConnected) return reject(new Error('vMix not connected'))
-      if (this.xmlPromise.resolve) {
-        return reject(new Error('An XML query is already in progress.'))
+      if (this.pendingQueries.has(key)) {
+        return reject(new Error(`A ${key} query is already in progress.`))
       }
 
-      this.xmlPromise = { resolve, reject }
-      this.sendCommand('XML')
-
-      setTimeout(() => {
-        if (this.xmlPromise.reject) {
-          this.xmlPromise.reject(new Error('XML query timeout'))
-          this.xmlPromise = { resolve: null, reject: null }
+      const timer = setTimeout(() => {
+        if (this.pendingQueries.has(key)) {
+          this.pendingQueries.get(key).reject(new Error(`${key} query timeout`))
+          this.pendingQueries.delete(key)
         }
-      }, 3000)
-    }) // This was the line with the syntax error.
+      }, timeout)
+
+      this.pendingQueries.set(key, { resolve, reject, timer })
+    })
+  }
+
+  queryXml() {
+    const promise = this._createPendingQuery('XML')
+    this.sendCommand('XML')
+    return promise
+  }
+
+  // NEW: Method specifically for XMLTEXT queries
+  queryXpath(xpath) {
+    const promise = this._createPendingQuery('XMLTEXT')
+    this.sendCommand(`XMLTEXT ${xpath}`)
+    return promise
   }
 
   handleClose() {
     console.log('vMix TCP connection closed. Reconnecting in 5 seconds...')
     this.isConnected = false
+    // Reject any pending queries on disconnect
+    for (const [key, query] of this.pendingQueries.entries()) {
+      query.reject(new Error('vMix disconnected'))
+    }
+    this.pendingQueries.clear()
     setTimeout(() => this.connect(), 5000)
   }
 }

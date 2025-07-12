@@ -1,21 +1,19 @@
 <script>
-  import { createEventDispatcher } from 'svelte'
-
   export let id
   export let name
+  export let number
   export let isProgram = false
   export let isPreview = false
-
-  const dispatch = createEventDispatcher()
+  export let onCommand = (detail) => {}
 
   $: tallyClass = isProgram ? 'program' : isPreview ? 'preview' : ''
 </script>
 
 <button
   class="input-btn {tallyClass}"
-  on:click={() => dispatch('command', `FUNCTION PreviewInput Input=${id}`)}
+  on:click={() => onCommand(`FUNCTION PreviewInput Input=${id}`)}
 >
-  <span class="input-number">{id}</span>
+  <span class="input-number">{number}</span>
   <span class="input-name">{name}</span>
 </button>
 
@@ -37,34 +35,29 @@
     cursor: pointer;
     transition: all 0.2s ease-out;
   }
-
   .input-btn:hover {
     border-color: #14ffec;
     background-color: #3f3f46;
   }
-
   .program {
-    background-color: #f44747; /* Red for Program/Active */
+    background-color: #f44747;
     border-color: #ff8a8a;
     color: white;
   }
   .preview {
-    background-color: #34d399; /* Green for Preview */
+    background-color: #34d399;
     border-color: #6ee7b7;
     color: white;
   }
-
   .input-number {
     font-size: 1.75em;
     font-weight: bold;
     color: #14ffec;
   }
-
   .program .input-number,
   .preview .input-number {
     color: white;
   }
-
   .input-name {
     font-size: 0.8em;
     margin-top: 5px;

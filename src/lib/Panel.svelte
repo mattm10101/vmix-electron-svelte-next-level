@@ -20,28 +20,31 @@
       })
     }
 
-    let isDragging = false
-    let isResizing = false
-    let startMouseX, startMouseY
-
     function onMouseDown(e) {
       const resizeHandle = e.target.closest('.resize-handle')
       const header = e.target.closest('.panel-header')
+      const control = e.target.closest('.panel-control')
+
+      if (control) return // Ignore clicks on controls like minimize
+
+      bringToFront()
 
       if (resizeHandle) {
-        e.stopPropagation()
         isResizing = true
-      } else if (header && !e.target.closest('.panel-control')) {
+      } else if (header) {
+        document.body.classList.add('no-select')
         isDragging = true
-        document.body.classList.add('no-select') // 👈 ADD THIS
         startMouseX = e.clientX
         startMouseY = e.clientY
 
+        // If the clicked panel is not part of the current selection,
+        // make it the only selected panel.
         if (!$selectedPanelIds.has(id)) {
           selectedPanelIds.set(new Set([id]))
         }
 
         initialDragPositions.clear()
+        // Store the initial position of every selected panel
         $selectedPanelIds.forEach((panelId) => {
           initialDragPositions.set(panelId, { ...$panelStates[panelId] })
         })
@@ -49,10 +52,13 @@
         return
       }
 
-      bringToFront()
       document.addEventListener('mousemove', onMouseMove)
       document.addEventListener('mouseup', onMouseUp, { once: true })
     }
+
+    let isDragging = false
+    let isResizing = false
+    let startMouseX, startMouseY
 
     function onMouseMove(e) {
       if (isDragging) {
@@ -70,16 +76,19 @@
           return allStates
         })
       } else if (isResizing) {
-        updateStore({
-          width: Math.max(200, e.clientX - state.x),
-          height: Math.max(150, e.clientY - state.y),
+        panelStates.update((allStates) => {
+          if (allStates[id]) {
+            allStates[id].width = Math.max(200, e.clientX - state.x)
+            allStates[id].height = Math.max(150, e.clientY - state.y)
+          }
+          return allStates
         })
       }
     }
 
     function onMouseUp() {
       if (isDragging) {
-        document.body.classList.remove('no-select') // 👈 ADD THIS
+        document.body.classList.remove('no-select')
       }
       isDragging = false
       isResizing = false
@@ -95,51 +104,26 @@
     }
   })
 
-  function updateStore(partialState) {
-    panelStates.update((allStates) => {
-      if (allStates[id]) {
-        allStates[id] = { ...allStates[id], ...partialState }
-      }
-      return allStates
-    })
-  }
-
   function bringToFront() {
     const maxZ = Math.max(
       0,
       ...Object.values($panelStates).map((p) => p.z || 0)
     )
-
     panelStates.update((allStates) => {
-      $selectedPanelIds.forEach((panelId) => {
-        if (allStates[panelId]) {
-          allStates[panelId].z = maxZ + 1
-        }
-      })
+      if (allStates[id]) {
+        allStates[id].z = maxZ + 1
+      }
       return allStates
     })
   }
 
-  function handleResizeKeydown(e) {
-    const step = 10
-    const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']
-    if (!keys.includes(e.key)) return
-
-    e.preventDefault()
-    let { width, height } = state
-    if (e.key === 'ArrowRight') width += step
-    if (e.key === 'ArrowLeft') width -= step
-    if (e.key === 'ArrowDown') height += step
-    if (e.key === 'ArrowUp') height -= step
-
-    updateStore({
-      width: Math.max(200, width),
-      height: Math.max(150, height),
-    })
-  }
-
   function toggleMinimized() {
-    updateStore({ min: !state.min })
+    panelStates.update((allStates) => {
+      if (allStates[id]) {
+        allStates[id].min = !allStates[id].min
+      }
+      return allStates
+    })
   }
 </script>
 
@@ -148,30 +132,29 @@
   class:minimized={state?.min}
   class:selected={$selectedPanelIds.has(id)}
   bind:this={panelElement}
-  style="left: {state?.x}px; top: {state?.y}px; width: {state?.width}px; height: {state?.height}px; z-index: {state?.z};"
+  style="left: {state?.x ?? 0}px; top: {state?.y ??
+    0}px; width: {state?.width ?? 200}px; height: {state?.height ??
+    150}px; z-index: {state?.z ?? 1};"
   role="dialog"
   aria-labelledby={titleId}
-  tabindex="-1"
 >
   <div class="panel-header">
     <span class="panel-title" id={titleId}>{title}</span>
     <div class="panel-controls">
-      <slot name="header-controls"></slot>
+      <slot name="header-controls" />
       <button
         class="panel-control"
         on:click|stopPropagation={toggleMinimized}
-        aria-label="Toggle panel minimization">{state?.min ? '⧄' : '—'}</button
+        aria-label="Toggle panel minimization"
       >
+        {state?.min ? '⧄' : '—'}
+      </button>
     </div>
   </div>
   <div class="panel-content">
-    <slot></slot>
+    <slot />
   </div>
-  <button
-    class="resize-handle"
-    on:keydown={handleResizeKeydown}
-    aria-label="Resize panel"
-  ></button>
+  <div class="resize-handle"></div>
 </div>
 
 <style>
@@ -179,30 +162,31 @@
     position: absolute;
     display: flex;
     flex-direction: column;
-    background-color: #2a2a2e;
+    background-color: var(--color-panel, #2a2a2e);
     border: 1px solid #4a4a4e;
     border-radius: 8px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     overflow: hidden;
-    outline: none;
   }
   .panel.minimized {
     height: 41px !important;
+    overflow: hidden;
   }
   .panel.selected {
-    border-color: #00d0ff;
+    border-color: var(--color-accent-blue, #00d0ff);
     box-shadow: 0 0 15px rgba(0, 208, 255, 0.6);
   }
   .panel-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background-color: #1f1f23;
-    color: #14ffec;
+    background-color: var(--color-header, #1f1f23);
+    color: var(--color-accent, #14ffec);
     padding: 8px 15px;
     cursor: move;
     font-weight: bold;
     border-bottom: 1px solid #4a4a4e;
+    flex-shrink: 0;
   }
   .panel-controls {
     display: flex;
@@ -212,7 +196,7 @@
   .panel-control {
     background: none;
     border: none;
-    color: #14ffec;
+    color: var(--color-accent, #14ffec);
     cursor: pointer;
     font-size: 1.2em;
     padding: 0 5px;
@@ -220,33 +204,21 @@
   .panel-content {
     flex-grow: 1;
     padding: 15px;
-    overflow-y: auto;
+    overflow: auto;
+    background-color: #2a2a2e;
   }
   .resize-handle {
-    background: none;
-    border: none;
-    padding: 0;
-    font: inherit;
     position: absolute;
     bottom: 0;
     right: 0;
     width: 15px;
     height: 15px;
     cursor: se-resize;
-    outline: none;
+    z-index: 10;
     background: repeating-linear-gradient(
       -45deg,
       #4a4a4e,
       #4a4a4e 2px,
-      transparent 2px,
-      transparent 4px
-    );
-  }
-  .resize-handle:focus {
-    background: repeating-linear-gradient(
-      -45deg,
-      #14ffec,
-      #14ffec 2px,
       transparent 2px,
       transparent 4px
     );

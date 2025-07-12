@@ -12,6 +12,12 @@ body {
   height: 100%;
 }
 
+/* This is the important rule for the text selection issue */
+body.no-select * {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 .input-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
@@ -22,10 +28,4 @@ body {
 
 .input-grid.hide-numbers .input-number {
   display: none;
-}
-
-.no-select {
-  -webkit-user-select: none; /* Safari */
-  -ms-user-select: none; /* IE 10+ and Edge */
-  user-select: none; /* Standard syntax */
 }

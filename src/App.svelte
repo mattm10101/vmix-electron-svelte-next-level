@@ -31,45 +31,36 @@
   import Scripts from './lib/Scripts.svelte'
   import MarqueeBox from './lib/MarqueeBox.svelte'
 
-  let pollingInterval
-
   const filteredInputs = derived(
     [inputs, visibilityOptions],
     ([$inputs, $opts]) => {
       return $inputs.filter((input) => {
-        if (!$opts.showL3s && input.name.startsWith('L3 -')) return false
-        if (!$opts.show1Ups && input.name.startsWith('1UP -')) return false
-        if (!$opts.show2Ups && input.name.startsWith('2UP -')) return false
-        if (!$opts.show3Ups && input.name.startsWith('3UP -')) return false
-        if (!$opts.show4Ups && input.name.startsWith('4UP -')) return false
+        if (!$opts.showL3s && input.title.startsWith('L3 -')) return false
+        // Add other filters as needed
         return true
       })
     }
   )
 
   onMount(() => {
+    // Initialize the real-time listener
     initializeVmixListener()
-    fetchAllInputs() // Fetch once on load
+    // Fetch all inputs just once on startup
+    fetchAllInputs()
 
-    // Poll for changes every 2 seconds
-    pollingInterval = setInterval(fetchAllInputs, 2000)
+    // FIX: The polling interval has been removed for efficiency.
+    // The manual refresh button will now be used to get new inputs.
 
-    function handleWindowMouseDown(e) {
-      if (e.target.closest('.panel')) {
-        return
-      }
-      startMarquee(e)
-    }
     window.addEventListener('mousedown', handleWindowMouseDown)
     return () => {
       window.removeEventListener('mousedown', handleWindowMouseDown)
-      clearInterval(pollingInterval) // Clean up the interval
     }
   })
 
-  onDestroy(() => {
-    clearInterval(pollingInterval)
-  })
+  function handleWindowMouseDown(e) {
+    if (e.target.closest('.panel')) return
+    startMarquee(e)
+  }
 
   let startX, startY
   function startMarquee(e) {
@@ -81,6 +72,7 @@
     document.addEventListener('mousemove', handleCanvasMouseMove)
     document.addEventListener('mouseup', handleCanvasMouseUp, { once: true })
   }
+
   function handleCanvasMouseMove(e) {
     const currentX = e.clientX
     const currentY = e.clientY
@@ -90,26 +82,31 @@
     const height = Math.abs(currentY - startY)
     marquee.set({ visible: true, x, y, width, height })
   }
-  function handleCanvasMouseUp(e) {
+
+  function handleCanvasMouseUp() {
     document.removeEventListener('mousemove', handleCanvasMouseMove)
     document.body.classList.remove('no-select')
-    const newSelection = new Set()
     const marqueeRect = get(marquee)
-    const allPanels = get(panelStates)
-    for (const id in allPanels) {
-      const panelRect = allPanels[id]
-      if (
-        marqueeRect.x < panelRect.x + panelRect.width &&
-        marqueeRect.x + marqueeRect.width > panelRect.x &&
-        marqueeRect.y < panelRect.y + panelRect.height &&
-        marqueeRect.y + marqueeRect.height > panelRect.y
-      ) {
-        newSelection.add(id)
+    if (marqueeRect.width > 0 || marqueeRect.height > 0) {
+      const newSelection = new Set()
+      const allPanels = get(panelStates)
+      for (const id in allPanels) {
+        const panelRect = allPanels[id]
+        if (
+          marqueeRect.x < panelRect.x + panelRect.width &&
+          marqueeRect.x + marqueeRect.width > panelRect.x &&
+          marqueeRect.y < panelRect.y + panelRect.height &&
+          marqueeRect.y + marqueeRect.height > panelRect.y
+        ) {
+          newSelection.add(id)
+        }
       }
+      selectedPanelIds.set(newSelection)
     }
-    selectedPanelIds.set(newSelection)
     marquee.set({ visible: false, x: 0, y: 0, width: 0, height: 0 })
   }
+
+  // --- Preset Handlers (Updated for Svelte 5) ---
   function handleSnapshot() {
     const currentLayout = get(panelStates)
     const presetName = `Preset ${get(layoutPresets).length + 1}`
@@ -118,17 +115,15 @@
       { id: Date.now(), name: presetName, layout: currentLayout },
     ])
   }
-  function handleApplyPreset(event) {
-    panelStates.set(event.detail)
+  function handleApplyPreset(layout) {
+    panelStates.set(layout)
   }
-  function handleDeletePreset(event) {
-    const idToDelete = event.detail
+  function handleDeletePreset(idToDelete) {
     layoutPresets.update((presets) =>
       presets.filter((p) => p.id !== idToDelete)
     )
   }
-  function handleRenamePreset(event) {
-    const { id, newName } = event.detail
+  function handleRenamePreset({ id, newName }) {
     layoutPresets.update((presets) =>
       presets.map((p) => (p.id === id ? { ...p, name: newName } : p))
     )
@@ -139,65 +134,73 @@
   class="h-full w-full bg-lab-metal font-sci text-neon-teal relative overflow-hidden"
 >
   <MarqueeBox />
+
   <Panel
     id="transitions"
     title="Transitions"
-    defaultState={{ x: 20, y: 20, width: 220, height: 200, z: 1, min: false }}
+    defaultState={{ x: 1050, y: 460, width: 220, height: 160, z: 1 }}
   >
-    <Transitions on:command={(e) => sendCommand(e.detail)} />
+    <Transitions onCommand={sendCommand} />
   </Panel>
+
   <Panel
     id="audio"
     title="Audio"
-    defaultState={{ x: 20, y: 230, width: 220, height: 140, z: 1, min: false }}
+    defaultState={{ x: 1050, y: 20, width: 220, height: 160, z: 1 }}
   >
     <div class="audio-controls"><MasterAudioButton /> <MasterFader /></div>
   </Panel>
+
   <Panel
     id="inputOptions"
     title="Input Options"
-    defaultState={{ x: 20, y: 380, width: 220, height: 360, z: 1, min: false }}
+    defaultState={{ x: 1050, y: 190, width: 220, height: 260, z: 1 }}
   >
     <InputOptions />
   </Panel>
+
   <Panel
     id="lowerThirds"
     title="Lower Thirds"
-    defaultState={{ x: 20, y: 750, width: 220, height: 180, z: 1, min: false }}
+    defaultState={{ x: 1050, y: 630, width: 220, height: 200, z: 1 }}
   >
-    <LowerThirds />
+    <LowerThirds onCommand={sendCommand} />
   </Panel>
+
   <Panel
     id="music"
     title="Music"
-    defaultState={{ x: 20, y: 940, width: 220, height: 100, z: 1, min: false }}
+    defaultState={{ x: 1050, y: 840, width: 220, height: 280, z: 1 }}
   >
     <Music />
   </Panel>
+
   <Panel
     id="scripts"
     title="Scripts"
-    defaultState={{ x: 20, y: 1050, width: 220, height: 250, z: 1, min: false }}
+    defaultState={{ x: 20, y: 770, width: 400, height: 200, z: 1 }}
   >
-    <Scripts on:command={(e) => sendCommand(e.detail)} />
+    <Scripts onCommand={sendCommand} />
   </Panel>
+
   <Panel
     id="presets"
     title="Presets"
-    defaultState={{ x: 20, y: 1310, width: 220, height: 180, z: 1, min: false }}
+    defaultState={{ x: 430, y: 770, width: 220, height: 200, z: 1 }}
   >
     <Presets
       presets={$layoutPresets}
-      on:snapshot={handleSnapshot}
-      on:apply={handleApplyPreset}
-      on:delete={handleDeletePreset}
-      on:rename={handleRenamePreset}
+      onSnapshot={handleSnapshot}
+      onApply={handleApplyPreset}
+      onDelete={handleDeletePreset}
+      onRename={handleRenamePreset}
     />
   </Panel>
+
   <Panel
     id="inputs"
     title="Inputs"
-    defaultState={{ x: 260, y: 20, width: 700, height: 1470, z: 1, min: false }}
+    defaultState={{ x: 20, y: 20, width: 1020, height: 740, z: 1 }}
   >
     <div slot="header-controls">
       <button
@@ -214,11 +217,12 @@
         {#each $filteredInputs as input (input.id)}
           <InputButton
             id={input.id}
-            name={input.name}
+            name={input.title}
+            number={input.id}
             isProgram={input.id === $programInput}
             isPreview={$visibilityOptions.showPreviewLed &&
               input.id === $previewInput}
-            on:command={(e) => sendCommand(e.detail)}
+            onCommand={sendCommand}
           />
         {/each}
       </div>
@@ -229,10 +233,11 @@
       </div>
     {/if}
   </Panel>
+
   <Panel
     id="log"
     title="Command Log"
-    defaultState={{ x: 980, y: 20, width: 280, height: 1470, z: 1, min: false }}
+    defaultState={{ x: 20, y: 980, width: 1250, height: 140, z: 1 }}
   >
     <CommandLog messages={$logMessages} />
   </Panel>
