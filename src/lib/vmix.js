@@ -56,12 +56,22 @@ export function initializeVmixListener() {
       if (message.startsWith('ACTS OK ')) {
         const parts = message.split(' ')
 
+        // Handle MasterAudio (mute) - which has 4 parts
         if (parts.length === 4 && parts[2] === 'MasterAudio') {
           const state = parts[3]
           isMasterAudioMuted.set(state === '0')
-          return
+          return // Exit after handling
         }
 
+        // Handle MasterVolume (fader) - which also has 4 parts
+        if (parts.length === 4 && parts[2] === 'MasterVolume') {
+          const state = parts[3]
+          // 👇 THIS IS THE CORRECTED LINE WITH THE OFFICIAL VMIX FORMULA
+          masterVolume.set(Math.round(parseFloat(state) ** 0.25 * 100))
+          return // Exit after handling
+        }
+
+        // Handle tally events that have an input number - which have 5 parts
         if (parts.length >= 5) {
           const activator = parts[2]
           const inputNum = parseInt(parts[3], 10)
@@ -71,8 +81,6 @@ export function initializeVmixListener() {
             programInput.set(state === '1' ? inputNum : 0)
           } else if (activator === 'InputPreview') {
             previewInput.set(state === '1' ? inputNum : 0)
-          } else if (activator === 'MasterVolume') {
-            masterVolume.set(parseInt(state, 10))
           } else if (activator === 'Overlay1') {
             overlay1ActiveInput.set(state === '1' ? inputNum : 0)
           }
