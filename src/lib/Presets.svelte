@@ -1,5 +1,8 @@
 <script>
   import { tick } from 'svelte'
+  import { showModal, panelStates, savedDefaultLayout } from './stores.js'
+  import { defaultLayout } from './defaultLayout.js'
+  import { get } from 'svelte/store'
 
   export let presets = []
   export let onSnapshot = () => {}
@@ -9,59 +12,77 @@
 
   let renamingId = null
   let editInput
+  // NEW: A temporary variable to hold the input's value during editing
+  let tempName = ''
 
-  function runApply(presetLayout) {
-    if (renamingId === null) {
-      onApply(presetLayout)
-    }
+  function applyDefaultLayout() {
+    const layoutToApply = get(savedDefaultLayout) || defaultLayout
+    onApply(layoutToApply)
   }
 
+  function confirmDelete(id) {
+    showModal('Are you sure you want to delete this preset?', () => {
+      onDelete(id)
+    })
+  }
+
+  // UPDATED: Now sets the temporary name when editing begins
   async function startEditing(preset) {
     renamingId = preset.id
+    tempName = preset.name
     await tick()
     editInput?.focus()
     editInput?.select()
   }
 
-  function handleNameChange(id, newName) {
-    onRename({ id, newName })
-  }
-
+  // UPDATED: This function now commits the final change
   function commitEdit() {
+    if (renamingId !== null) {
+      onRename({ id: renamingId, newName: tempName })
+    }
     renamingId = null
   }
 </script>
 
 <div class="presets-container">
-  <button class="snapshot-btn" on:click={onSnapshot}> Snapshot </button>
+  <div class="top-buttons">
+    <button class="snapshot-btn" on:click={onSnapshot}> Snapshot </button>
+    <button class="default-btn" on:click={applyDefaultLayout}> Default </button>
+  </div>
   <hr />
   <div class="presets-list">
-    {#each presets as preset (preset.id)}
-      <div class="preset-row">
-        {#if renamingId === preset.id}
-          <input
-            type="text"
-            class="rename-input"
-            value={preset.name}
-            bind:this={editInput}
-            on:input={(e) => handleNameChange(preset.id, e.target.value)}
-            on:blur={commitEdit}
-            on:keydown={(e) => e.key === 'Enter' && commitEdit()}
-          />
-        {:else}
+    {#if presets.length > 0}
+      {#each presets as preset (preset.id)}
+        <div class="preset-row">
+          {#if renamingId === preset.id}
+            <input
+              type="text"
+              class="rename-input"
+              bind:this={editInput}
+              bind:value={tempName}
+              on:blur={commitEdit}
+              on:keydown={(e) => e.key === 'Enter' && commitEdit()}
+            />
+          {:else}
+            <button
+              class="preset-btn"
+              on:click={() => onApply(preset.layout)}
+              on:dblclick={() => startEditing(preset)}
+              title="Click to apply, double-click to rename"
+            >
+              {preset.name}
+            </button>
+          {/if}
           <button
-            class="preset-btn"
-            on:click={() => runApply(preset.layout)}
-            on:dblclick={() => startEditing(preset)}
+            class="delete-btn"
+            on:click={() => confirmDelete(preset.id)}
+            title="Delete Preset">X</button
           >
-            {preset.name}
-          </button>
-        {/if}
-        <button class="delete-btn" on:click={() => onDelete(preset.id)}
-          >X</button
-        >
-      </div>
-    {/each}
+        </div>
+      {/each}
+    {:else}
+      <div class="no-presets-message">No snapshots taken yet.</div>
+    {/if}
   </div>
 </div>
 
@@ -72,25 +93,41 @@
     gap: 10px;
     height: 100%;
   }
+  .top-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
   hr {
     border-color: #3c3c3c;
     width: 100%;
     margin: 5px 0;
   }
-  .snapshot-btn {
+  .snapshot-btn,
+  .default-btn {
     width: 100%;
     padding: 10px;
     border-radius: 5px;
-    border: 1px solid #14ffec;
-    background-color: #1f1f23;
-    color: #14ffec;
     font-weight: bold;
     cursor: pointer;
     transition: all 0.2s;
   }
+  .snapshot-btn {
+    border: 1px solid #14ffec;
+    background-color: #1f1f23;
+    color: #14ffec;
+  }
   .snapshot-btn:hover {
     background-color: #14ffec;
     color: #1f1f23;
+  }
+  .default-btn {
+    border: 1px solid #555;
+    background-color: #3f3f46;
+    color: #eee;
+  }
+  .default-btn:hover {
+    background-color: #555;
   }
   .presets-list {
     flex-grow: 1;
@@ -147,5 +184,10 @@
   .delete-btn:hover {
     background-color: #c53030;
     color: white;
+  }
+  .no-presets-message {
+    color: #888;
+    text-align: center;
+    margin-top: 10px;
   }
 </style>

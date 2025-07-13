@@ -1,5 +1,5 @@
 <script>
-  import { onMount, onDestroy } from 'svelte'
+  import { onMount } from 'svelte'
   import { get, derived } from 'svelte/store'
   import {
     panelStates,
@@ -12,6 +12,7 @@
     marquee,
     selectedPanelIds,
     scriptManager,
+    gridOptions,
   } from './lib/stores.js'
   import {
     sendCommand,
@@ -30,8 +31,10 @@
   import Music from './lib/Music.svelte'
   import Scripts from './lib/Scripts.svelte'
   import MarqueeBox from './lib/MarqueeBox.svelte'
+  import Options from './lib/Options.svelte'
+  import BackgroundGrid from './lib/BackgroundGrid.svelte'
+  import Modal from './lib/Modal.svelte'
 
-  // NEW: A variable to hold the Music component instance
   let musicComponent
 
   const filteredInputs = derived(
@@ -39,7 +42,6 @@
     ([$inputs, $opts]) => {
       return $inputs.filter((input) => {
         if (!$opts.showL3s && input.title.startsWith('L3 -')) return false
-        // Add other filters as needed
         return true
       })
     }
@@ -57,6 +59,7 @@
 
   function handleWindowMouseDown(e) {
     if (e.target.closest('.panel')) return
+    window.getSelection()?.removeAllRanges()
     startMarquee(e)
   }
 
@@ -106,20 +109,26 @@
 
   function handleSnapshot() {
     const currentLayout = get(panelStates)
+    // Create a deep copy to ensure all nested properties are saved
+    const layoutCopy = JSON.parse(JSON.stringify(currentLayout))
     const presetName = `Preset ${get(layoutPresets).length + 1}`
     layoutPresets.update((presets) => [
       ...presets,
-      { id: Date.now(), name: presetName, layout: currentLayout },
+      { id: Date.now(), name: presetName, layout: layoutCopy },
     ])
   }
+
   function handleApplyPreset(layout) {
-    panelStates.set(layout)
+    // Use a deep copy to prevent direct mutation of the preset store
+    panelStates.set(JSON.parse(JSON.stringify(layout)))
   }
+
   function handleDeletePreset(idToDelete) {
     layoutPresets.update((presets) =>
       presets.filter((p) => p.id !== idToDelete)
     )
   }
+
   function handleRenamePreset({ id, newName }) {
     layoutPresets.update((presets) =>
       presets.map((p) => (p.id === id ? { ...p, name: newName } : p))
@@ -130,6 +139,8 @@
 <div
   class="h-full w-full bg-lab-metal font-sci text-neon-teal relative overflow-hidden"
 >
+  <Modal />
+  <BackgroundGrid />
   <MarqueeBox />
 
   <Panel
@@ -180,6 +191,14 @@
   </Panel>
 
   <Panel
+    id="options"
+    title="Options"
+    defaultState={{ x: 660, y: 770, width: 380, height: 200, z: 1 }}
+  >
+    <Options />
+  </Panel>
+
+  <Panel
     id="scripts"
     title="Scripts"
     defaultState={{ x: 20, y: 770, width: 400, height: 200, z: 1 }}
@@ -214,10 +233,7 @@
       >
     </div>
     {#if $inputs.length > 0}
-      <div
-        class="input-grid"
-        class:hide-numbers={!$visibilityOptions.showNumbers}
-      >
+      <div class="input-grid" style="--grid-gap: {$gridOptions.gapSize}px;">
         {#each $filteredInputs as input (input.id)}
           <InputButton
             id={input.id}

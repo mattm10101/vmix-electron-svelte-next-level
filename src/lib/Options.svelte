@@ -1,0 +1,159 @@
+<script>
+  import { gridOptions, panelStates, savedDefaultLayout } from './stores.js'
+  import { get } from 'svelte/store'
+
+  function setSnapSize(size) {
+    gridOptions.update((opts) => ({ ...opts, snapSize: size }))
+  }
+
+  function toggleGrid() {
+    gridOptions.update((opts) => ({ ...opts, show: !opts.show }))
+  }
+
+  function toggleSnap() {
+    gridOptions.update((opts) => ({ ...opts, snapToGrid: !opts.snapToGrid }))
+  }
+
+  function toggleResizeSnap() {
+    gridOptions.update((opts) => ({ ...opts, snapResize: !opts.snapResize }))
+  }
+
+  // Function to save the current layout as the new default
+  function saveAsDefault() {
+    const currentLayout = get(panelStates)
+    savedDefaultLayout.set(currentLayout)
+    alert('Current layout saved as default!')
+  }
+
+  // REMOVED: The returnToDefault function is no longer needed here.
+</script>
+
+<div class="options-container">
+  <div class="layout-actions">
+    <button class="action-btn save-btn" on:click={saveAsDefault}
+      >Save as Default</button
+    >
+  </div>
+  <div class="option-group">
+    <span class="label">Visual Grid</span>
+    <button
+      class="toggle-btn"
+      class:active={$gridOptions.show}
+      on:click={toggleGrid}
+    >
+      {$gridOptions.show ? 'On' : 'Off'}
+    </button>
+  </div>
+  <div class="option-group">
+    <span class="label">Drag Snap</span>
+    <button
+      class="toggle-btn"
+      class:active={$gridOptions.snapToGrid}
+      on:click={toggleSnap}
+    >
+      {$gridOptions.snapToGrid ? 'On' : 'Off'}
+    </button>
+  </div>
+  <div class="option-group">
+    <span class="label">Snap Resize</span>
+    <button
+      class="toggle-btn"
+      class:active={$gridOptions.snapResize}
+      on:click={toggleResizeSnap}
+    >
+      {$gridOptions.snapResize ? 'On' : 'Off'}
+    </button>
+  </div>
+  <div class="option-group">
+    <span class="label">Snap To</span>
+    <div class="button-group">
+      <button
+        class:active={$gridOptions.snapSize === 2}
+        on:click={() => setSnapSize(2)}>S</button
+      >
+      <button
+        class:active={$gridOptions.snapSize === 10}
+        on:click={() => setSnapSize(10)}>M</button
+      >
+      <button
+        class:active={$gridOptions.snapSize === 20}
+        on:click={() => setSnapSize(20)}>L</button
+      >
+      <button
+        class:active={$gridOptions.snapSize === 40}
+        on:click={() => setSnapSize(40)}>XL</button
+      >
+    </div>
+  </div>
+</div>
+
+<style>
+  .options-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    gap: 10px;
+  }
+  .layout-actions {
+    display: grid;
+    /* UPDATED: Changed to 1fr to fill the space */
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .action-btn {
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #555;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .save-btn {
+    background-color: #2b6cb0;
+    color: white;
+  }
+  .save-btn:hover {
+    background-color: #3182ce;
+  }
+  .option-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #2a2a2e;
+    padding: 10px;
+    border-radius: 5px;
+  }
+  .label {
+    font-weight: bold;
+    color: #ccc;
+  }
+  .button-group {
+    display: flex;
+    gap: 5px;
+    background: #1f1f23;
+    border-radius: 5px;
+    padding: 4px;
+  }
+  .button-group button,
+  .toggle-btn {
+    background: #3f3f46;
+    border: 1px solid #555;
+    color: #eee;
+    padding: 6px 12px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 40px;
+    text-align: center;
+  }
+  .button-group button:hover,
+  .toggle-btn:hover {
+    background: #555;
+  }
+  .button-group button.active,
+  .toggle-btn.active {
+    background-color: #14ffec;
+    color: #1f1f23;
+    font-weight: bold;
+  }
+</style>

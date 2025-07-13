@@ -20,7 +20,7 @@
     {#each $l3Inputs as l3 (l3.id)}
       <button
         class="l3-btn"
-        class:blinking={$overlay1ActiveInput === l3.id}
+        class:active={$overlay1ActiveInput === l3.id}
         on:click={() => toggleOverlay(l3.id)}
         title={l3.title}
       >
@@ -33,17 +33,6 @@
 </div>
 
 <style>
-  @keyframes blink-animation {
-    0% {
-      background-color: #c53030;
-    }
-    50% {
-      background-color: #5d1b1b;
-    }
-    100% {
-      background-color: #c53030;
-    }
-  }
   .l3-container {
     display: flex;
     flex-direction: column;
@@ -55,7 +44,7 @@
     width: 100%;
     padding: 10px 15px;
     border-radius: 5px;
-    border: 1px solid #555;
+    border: 2px solid #555;
     background-color: #2d2d2d;
     color: #eee;
     cursor: pointer;
@@ -63,15 +52,28 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    transition: background-color 0.2s;
+    transition: all 0.2s ease-in-out;
   }
-  .l3-btn:hover {
+  .l3-btn:hover:not(.active) {
+    border-color: #888;
     background-color: #3f3f46;
   }
-  .l3-btn.blinking {
-    border-color: #f56565;
+
+  /* NEW: Advanced styling for the active button to match the image */
+  .l3-btn.active {
+    /* A darker, richer gradient for better text readability */
+    background: linear-gradient(to bottom, #1abd79, #179a63);
     color: white;
-    animation: blink-animation 1.5s infinite;
+    font-weight: bold;
+
+    /* Creates the clean, 2px white inner border */
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.9);
+
+    /* Creates the soft outer neon glow */
+    filter: drop-shadow(0 0 2px #67ffc7) drop-shadow(0 0 6px #67ffc7);
+
+    /* Make the original border transparent so it doesn't interfere */
+    border-color: transparent;
   }
   .no-l3s-message {
     color: #888;

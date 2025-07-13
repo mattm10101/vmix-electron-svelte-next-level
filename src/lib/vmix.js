@@ -1,4 +1,4 @@
-import { get } from 'svelte/store' // We need 'get' to read the store value inside the listener
+import { get } from 'svelte/store'
 import {
   inputs,
   logMessages,
@@ -7,6 +7,7 @@ import {
   isMasterAudioMuted,
   masterVolume,
   playingInputs,
+  overlay1ActiveInput, // Import the overlay store
 } from './stores.js'
 
 let logId = 0
@@ -85,16 +86,19 @@ export function initializeVmixListener() {
             return new Set(currentSet)
           })
           break
-        // NEW: Handle the mute state for any input
         case 'InputAudio':
           inputs.update((currentInputs) => {
             const targetInput = currentInputs.find((i) => i.id === inputNum)
             if (targetInput) {
-              // vMix sends '1' for ON (not muted) and '0' for OFF (muted)
               targetInput.muted = state === '0'
             }
             return currentInputs
           })
+          break
+        // NEW: Handle Overlay1 activator messages
+        case 'Overlay1':
+          // If state is '1', set the active input ID. If '0', set it to 0 (off).
+          overlay1ActiveInput.set(state === '1' ? inputNum : 0)
           break
         case 'MasterAudio':
           isMasterAudioMuted.set(parts[3] === '0')

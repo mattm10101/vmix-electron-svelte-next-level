@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte'
+  import { onMount, tick } from 'svelte'
   import { inputs, playingInputs } from './stores.js'
   import { sendCommand, queryVmixXpath } from './vmix.js'
 
@@ -8,42 +8,71 @@
   // Reactive state derived from stores
   $: musicInput = $inputs.find((i) => i.shortTitle === MUSIC_INPUT_NAME)
   $: isPlaying = musicInput && $playingInputs.has(musicInput.id)
+  $: isMuted = musicInput?.muted
   $: trackList = musicInput?.list || []
   $: vmixSelectedIndex = musicInput?.selectedIndex
     ? musicInput.selectedIndex - 1
     : -1
+  $: nowPlayingName = (() => {
+    if (!musicInput || !trackList[vmixSelectedIndex]) return 'Paused'
+    return trackList[vmixSelectedIndex].name
+  })()
 
+  // --- Animation Logic & State ---
   let isRestartFlashing = false
   let isPrevFlashing = false
   let isNextFlashing = false
-  let nowPlayingName = 'Paused'
+  let wrapperElement
+  let textElement
+  let needsScrolling = false
+  let isAnimationPaused = false
 
-  async function updateNowPlayingDisplay() {
-    if (!musicInput) return
-    const indexXpath = `vmix/inputs/input[@shortTitle='${MUSIC_INPUT_NAME}']/@selectedIndex`
-    const selectedIndexResult = await queryVmixXpath(indexXpath)
-    if (selectedIndexResult === null) return
+  // This reactive block now correctly handles the animation state
+  $: {
+    if (isPlaying && nowPlayingName) {
+      tick().then(() => {
+        if (wrapperElement && textElement) {
+          const textWidth = textElement.offsetWidth
+          const wrapperWidth = wrapperElement.offsetWidth
+          needsScrolling = textWidth > wrapperWidth
 
-    const currentSelectedIndex = parseInt(selectedIndexResult, 10)
-
-    const titleXpath = `vmix/inputs/input[@shortTitle='${MUSIC_INPUT_NAME}']/list/item[${currentSelectedIndex}]`
-    const titleResult = await queryVmixXpath(titleXpath)
-
-    if (titleResult !== null) {
-      nowPlayingName = $playingInputs.has(musicInput.id)
-        ? titleResult
-        : 'Paused'
+          if (needsScrolling) {
+            const scrollDistance = textWidth - wrapperWidth
+            textElement.style.setProperty(
+              '--scroll-distance',
+              `-${scrollDistance}px`
+            )
+          }
+        }
+      })
+    } else {
+      needsScrolling = false
+      isAnimationPaused = false
     }
   }
 
-  // NEW: Exposing the refresh function so the parent component can call it.
-  export function refresh() {
-    updateNowPlayingDisplay()
+  // Click handler to toggle the animation state
+  function toggleAnimation() {
+    if (needsScrolling) {
+      isAnimationPaused = !isAnimationPaused
+    }
   }
 
-  onMount(() => {
-    setTimeout(updateNowPlayingDisplay, 500)
-  })
+  async function refreshSelectedIndex() {
+    if (!musicInput) return
+    const xpath = `vmix/inputs/input[@shortTitle='${MUSIC_INPUT_NAME}']/@selectedIndex`
+    const newIndex = await queryVmixXpath(xpath)
+
+    if (newIndex !== null) {
+      inputs.update((allInputs) => {
+        const targetInput = allInputs.find((i) => i.id === musicInput.id)
+        if (targetInput) {
+          targetInput.selectedIndex = parseInt(newIndex, 10)
+        }
+        return allInputs
+      })
+    }
+  }
 
   function selectTrack(trackIndex) {
     const inputName = musicInput.shortTitle
@@ -76,30 +105,26 @@
     await new Promise((resolve) => setTimeout(resolve, 50))
     await refreshSelectedIndex()
   }
-
-  // This function is now only used by handleFlashClick
-  async function refreshSelectedIndex() {
-    if (!musicInput) return
-    const xpath = `vmix/inputs/input[@shortTitle='${MUSIC_INPUT_NAME}']/@selectedIndex`
-    const newIndex = await queryVmixXpath(xpath)
-
-    if (newIndex !== null) {
-      inputs.update((allInputs) => {
-        const targetInput = allInputs.find((i) => i.id === musicInput.id)
-        if (targetInput) {
-          targetInput.selectedIndex = parseInt(newIndex, 10)
-        }
-        return allInputs
-      })
-    }
-  }
 </script>
 
 <div class="music-container">
   {#if musicInput}
-    <div class="now-playing-container" title={nowPlayingName}>
-      <span class="now-playing-text">{nowPlayingName}</span>
-    </div>
+    <button
+      type="button"
+      class="now-playing-container"
+      title={isPlaying ? nowPlayingName : 'Click to toggle scroll'}
+      on:click={toggleAnimation}
+    >
+      <div class="now-playing-text-wrapper" bind:this={wrapperElement}>
+        <span
+          class="now-playing-text"
+          class:scrolling={needsScrolling && !isAnimationPaused}
+          bind:this={textElement}
+        >
+          {isPlaying ? nowPlayingName : 'Paused'}
+        </span>
+      </div>
+    </button>
 
     <div class="button-row">
       <button
@@ -132,13 +157,13 @@
       >
       <button
         class="control-btn mute-btn"
-        class:muted={musicInput.muted}
+        class:muted={isMuted}
         on:click={() =>
           sendCommand(`FUNCTION Audio Input=${musicInput.shortTitle}`)}
         title="Toggle Mute"
         aria-label="Toggle Mute"
       >
-        {#if musicInput.muted}
+        {#if isMuted}
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
@@ -192,6 +217,22 @@
 </div>
 
 <style>
+  @keyframes pause-scroll-fade {
+    0%,
+    35% {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    91% {
+      transform: translateX(var(--scroll-distance));
+      opacity: 1;
+    }
+    100% {
+      transform: translateX(var(--scroll-distance));
+      opacity: 0;
+    }
+  }
+
   .music-container {
     height: 100%;
     display: flex;
@@ -203,21 +244,35 @@
     border-radius: 5px;
     padding: 0 10px;
     overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
     border: 1px solid #4a4a4e;
-    text-align: center;
     color: #14ffec;
     font-weight: bold;
     height: 300px;
-    font-size: 1.5em;
+    font-size: 1.25em;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
+    cursor: pointer;
+    /* Add this to make the button look like a div */
+    text-align: left;
+    width: 100%;
+  }
+
+  .now-playing-text-wrapper {
+    width: 100%;
+    overflow: hidden;
   }
   .now-playing-text {
     display: inline-block;
+    white-space: nowrap;
+    text-align: left;
+    --scroll-distance: 0px;
   }
+
+  .now-playing-text.scrolling {
+    animation: pause-scroll-fade 5.625s linear infinite;
+  }
+
   .button-row {
     display: grid;
     grid-template-columns: repeat(5, 1fr);

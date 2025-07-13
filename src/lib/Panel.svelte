@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte'
-  import { panelStates, selectedPanelIds } from './stores.js'
+  import { panelStates, selectedPanelIds, gridOptions } from './stores.js'
 
   export let id
   export let title
@@ -25,8 +25,9 @@
       const header = e.target.closest('.panel-header')
       const control = e.target.closest('.panel-control')
 
-      if (control) return // Ignore clicks on controls like minimize
+      if (control) return
 
+      window.getSelection()?.removeAllRanges()
       bringToFront()
 
       if (resizeHandle) {
@@ -37,14 +38,11 @@
         startMouseX = e.clientX
         startMouseY = e.clientY
 
-        // If the clicked panel is not part of the current selection,
-        // make it the only selected panel.
         if (!$selectedPanelIds.has(id)) {
           selectedPanelIds.set(new Set([id]))
         }
 
         initialDragPositions.clear()
-        // Store the initial position of every selected panel
         $selectedPanelIds.forEach((panelId) => {
           initialDragPositions.set(panelId, { ...$panelStates[panelId] })
         })
@@ -69,8 +67,17 @@
           $selectedPanelIds.forEach((panelId) => {
             const initialPos = initialDragPositions.get(panelId)
             if (initialPos && allStates[panelId]) {
-              allStates[panelId].x = Math.max(0, initialPos.x + dx)
-              allStates[panelId].y = Math.max(0, initialPos.y + dy)
+              const newX = initialPos.x + dx
+              const newY = initialPos.y + dy
+
+              if ($gridOptions.snapToGrid) {
+                const snapSize = $gridOptions.snapSize
+                allStates[panelId].x = Math.round(newX / snapSize) * snapSize
+                allStates[panelId].y = Math.round(newY / snapSize) * snapSize
+              } else {
+                allStates[panelId].x = newX
+                allStates[panelId].y = newY
+              }
             }
           })
           return allStates
@@ -78,8 +85,17 @@
       } else if (isResizing) {
         panelStates.update((allStates) => {
           if (allStates[id]) {
-            allStates[id].width = Math.max(200, e.clientX - state.x)
-            allStates[id].height = Math.max(150, e.clientY - state.y)
+            const newWidth = Math.max(200, e.clientX - state.x)
+            const newHeight = Math.max(150, e.clientY - state.y)
+
+            if ($gridOptions.snapResize) {
+              const snapSize = $gridOptions.snapSize
+              allStates[id].width = Math.round(newWidth / snapSize) * snapSize
+              allStates[id].height = Math.round(newHeight / snapSize) * snapSize
+            } else {
+              allStates[id].width = newWidth
+              allStates[id].height = newHeight
+            }
           }
           return allStates
         })
