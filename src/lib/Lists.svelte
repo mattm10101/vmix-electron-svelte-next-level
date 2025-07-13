@@ -1,92 +1,64 @@
 <script>
-  import { onMount, onDestroy } from 'svelte'
-  import { listInputs, listStates } from './stores'
-  import { sendCommand } from './vmix'
+  import { derived } from 'svelte/store'
+  import { inputs } from './stores.js'
+  import { sendCommand } from './vmix.js'
 
-  let pollingInterval
+  // Create a reactive store that *only* contains inputs that are lists.
+  // This replaces the need for polling and separate state management.
+  const listInputs = derived(inputs, ($inputs) => {
+    return $inputs.filter((input) =>
+      input.title?.toLowerCase().startsWith('list')
+    )
+  })
+
   let expandedLists = {}
 
-  // This function gets the list of items from the Web API
-  async function fetchListStates() {
-    if (!$listInputs.length || !window.electronAPI) return
-
-    const newStates = {}
-    for (const listInput of $listInputs) {
-      try {
-        const data = await window.electronAPI.getListItems(listInput.id)
-        newStates[listInput.id] = {
-          ...data,
-          name: listInput.name,
-          id: listInput.id,
-        }
-      } catch (error) {
-        console.error(`Failed to get items for list ${listInput.id}:`, error)
-      }
-    }
-    listStates.set(newStates)
+  // Toggles the dropdown visibility for a list
+  function toggleList(listId) {
+    expandedLists[listId] = !expandedLists[listId]
   }
 
-  onMount(() => {
-    fetchListStates()
-    // We poll to get the currently selected index
-    pollingInterval = setInterval(fetchListStates, 1000)
-  })
-
-  onDestroy(() => {
-    clearInterval(pollingInterval)
-  })
-
-  // ==========================================================
-  // THIS IS THE CORRECTED "SMART" FUNCTION
-  // It ensures the correct item is selected before toggling Play/Pause.
-  // ==========================================================
-  function playPauseItem(listData, itemIndex) {
-    const encodedName = encodeURIComponent(listData.name)
+  // This function sends the correct commands to vMix. The UI will update
+  // automatically when vMix sends back Tally/ACTS messages.
+  function playPauseItem(listInput, itemIndex) {
     const vmixIndex = itemIndex + 1 // vMix uses a 1-based index
 
     // Always make sure the correct item is selected first.
-    if (listData.selectedIndex !== vmixIndex) {
+    if (listInput.selectedIndex !== vmixIndex) {
       sendCommand(
-        `FUNCTION SelectIndex Input='${encodedName}'&Value=${vmixIndex}`
+        `FUNCTION SelectIndex Input='${listInput.key}'&Value=${vmixIndex}`
       )
     }
     // Then, toggle Play/Pause on the list. vMix acts on the selected item.
-    sendCommand(`FUNCTION PlayPause Input='${encodedName}'`)
-  }
-
-  // Toggles the dropdown visibility
-  function toggleList(listId) {
-    expandedLists[listId] = !expandedLists[listId]
-    expandedLists = expandedLists
+    sendCommand(`FUNCTION PlayPause Input='${listInput.key}'`)
   }
 </script>
 
 <div class="lists-container">
   {#if $listInputs.length > 0}
-    {#each Object.values($listStates) as listData (listData.id)}
+    {#each $listInputs as listInput (listInput.id)}
       <div class="list-section">
         <button
           class="list-title-btn no-select"
-          on:click={() => toggleList(listData.id)}
+          on:click={() => toggleList(listInput.id)}
         >
-          <span
-            >{listData.name.replace('LIST - ', '').replace('LIST ', '')}</span
+          <span>{listInput.title.replace(/LIST -? ?/i, '')}</span>
+          <span class="chevron">{expandedLists[listInput.id] ? '▼' : '▶'}</span
           >
-          <span class="chevron">{expandedLists[listData.id] ? '▼' : '▶'}</span>
         </button>
 
-        {#if expandedLists[listData.id]}
+        {#if expandedLists[listInput.id]}
           <div class="list-items">
-            {#each listData.items as item, i (item.id)}
+            {#each listInput.list as item, i (item.id)}
               {@const isPlaying =
-                listData.state === 'Running' &&
-                listData.selectedIndex === i + 1}
+                listInput.state === 'Running' &&
+                listInput.selectedIndex === i + 1}
               <div class="list-item-row">
                 <span class="item-name no-select">{item.name}</span>
                 <button
                   class="play-pause-btn"
                   class:playing={isPlaying}
-                  on:click={() => playPauseItem(listData, i)}
+                  on:click={() => playPauseItem(listInput, i)}
                   title="Play/Pause Item"
                 >
                   {#if isPlaying}

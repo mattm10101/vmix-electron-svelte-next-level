@@ -1,6 +1,5 @@
 <script>
   import { onMount } from 'svelte'
-  // FIXED: Re-added 'derived' to the import line.
   import { get, derived } from 'svelte/store'
   import {
     panelStates,
@@ -14,7 +13,9 @@
     selectedPanelIds,
     scriptManager,
     gridOptions,
+    savedDefaultLayout,
   } from './lib/stores.js'
+  import { defaultLayout } from './lib/defaultLayout.js'
   import {
     sendCommand,
     fetchAllInputs,
@@ -52,7 +53,6 @@
   onMount(() => {
     initializeVmixListener()
     fetchAllInputs()
-
     window.addEventListener('mousedown', handleWindowMouseDown)
     return () => {
       window.removeEventListener('mousedown', handleWindowMouseDown)
@@ -69,23 +69,50 @@
       return
     }
 
-    const keyNumber = parseInt(event.key, 10)
-    if (isNaN(keyNumber) || keyNumber < 1 || keyNumber > 9) {
+    const key = event.key
+    const shift = event.shiftKey
+    const keyNumber = parseInt(key, 10)
+
+    // --- Add Snapshot: '+' (Shift + '=') ---
+    if (key === '+' || (key === '=' && shift)) {
+      event.preventDefault()
+      handleSnapshot()
+      addLog('Layout snapshot created with hotkey (+).', 'info')
       return
     }
 
-    const currentPresets = get(layoutPresets)
-    const presetIndex = keyNumber - 1
-
-    if (presetIndex < currentPresets.length) {
-      const presetToApply = currentPresets[presetIndex]
-      if (presetToApply) {
-        handleApplyPreset(presetToApply.layout)
+    // --- Delete Last Preset: '_' (Shift + '-') ---
+    if (key === '_' || (key === '-' && shift)) {
+      event.preventDefault()
+      const currentPresets = get(layoutPresets)
+      if (currentPresets.length > 0) {
+        const lastPreset = currentPresets[currentPresets.length - 1]
+        handleDeletePreset(lastPreset.id)
         addLog(
-          `Applied preset "${presetToApply.name}" with key '${keyNumber}'`,
+          `Deleted last preset "${lastPreset.name}" with hotkey (_).`,
           'info'
         )
       }
+      return
+    }
+
+    // --- Recall Preset: Number keys [1-9] ---
+    if (!shift && !isNaN(keyNumber) && keyNumber >= 1 && keyNumber <= 9) {
+      event.preventDefault()
+      const presets = get(layoutPresets)
+      const preset = presets[keyNumber - 1]
+      if (preset) {
+        handleApplyPreset(preset.layout)
+        addLog(`Applied preset "${preset.name}" with key '${key}'.`, 'info')
+      }
+      return
+    }
+
+    // --- Recall Default Layout: ` (Backtick) ---
+    if (key === '`' && !shift) {
+      event.preventDefault()
+      applyDefaultLayout()
+      return
     }
   }
 
@@ -163,6 +190,12 @@
     layoutPresets.update((presets) =>
       presets.map((p) => (p.id === id ? { ...p, name: newName } : p))
     )
+  }
+
+  function applyDefaultLayout() {
+    const layoutToApply = get(savedDefaultLayout) || defaultLayout
+    handleApplyPreset(layoutToApply)
+    addLog('Default layout applied.', 'info')
   }
 </script>
 
@@ -265,7 +298,11 @@
       >
     </div>
     {#if $inputs.length > 0}
-      <div class="input-grid" style="--grid-gap: {$gridOptions.gapSize}px;">
+      <div
+        class="input-grid"
+        class:hide-numbers={!$visibilityOptions.showNumbers}
+        style="--grid-gap: {$gridOptions.gapSize}px;"
+      >
         {#each $filteredInputs as input (input.id)}
           <InputButton
             id={input.id}
