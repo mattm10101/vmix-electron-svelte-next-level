@@ -7,12 +7,13 @@ import {
   isMasterAudioMuted,
   masterVolume,
   playingInputs,
-  overlay1ActiveInput, // Import the overlay store
+  overlay1ActiveInput,
 } from './stores.js'
 
 let logId = 0
 
-function addLog(message, type = 'info') {
+// FIXED: Added the 'export' keyword here.
+export function addLog(message, type = 'info') {
   const timestamp = new Date().toLocaleTimeString()
   logMessages.update((currentMessages) => {
     const newLog = [
@@ -95,9 +96,7 @@ export function initializeVmixListener() {
             return currentInputs
           })
           break
-        // NEW: Handle Overlay1 activator messages
         case 'Overlay1':
-          // If state is '1', set the active input ID. If '0', set it to 0 (off).
           overlay1ActiveInput.set(state === '1' ? inputNum : 0)
           break
         case 'MasterAudio':

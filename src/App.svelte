@@ -1,5 +1,6 @@
 <script>
   import { onMount } from 'svelte'
+  // FIXED: Re-added 'derived' to the import line.
   import { get, derived } from 'svelte/store'
   import {
     panelStates,
@@ -18,6 +19,7 @@
     sendCommand,
     fetchAllInputs,
     initializeVmixListener,
+    addLog,
   } from './lib/vmix.js'
   import Panel from './lib/Panel.svelte'
   import Transitions from './lib/Transitions.svelte'
@@ -56,6 +58,36 @@
       window.removeEventListener('mousedown', handleWindowMouseDown)
     }
   })
+
+  function handleKeydown(event) {
+    const target = event.target
+    if (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.isContentEditable
+    ) {
+      return
+    }
+
+    const keyNumber = parseInt(event.key, 10)
+    if (isNaN(keyNumber) || keyNumber < 1 || keyNumber > 9) {
+      return
+    }
+
+    const currentPresets = get(layoutPresets)
+    const presetIndex = keyNumber - 1
+
+    if (presetIndex < currentPresets.length) {
+      const presetToApply = currentPresets[presetIndex]
+      if (presetToApply) {
+        handleApplyPreset(presetToApply.layout)
+        addLog(
+          `Applied preset "${presetToApply.name}" with key '${keyNumber}'`,
+          'info'
+        )
+      }
+    }
+  }
 
   function handleWindowMouseDown(e) {
     if (e.target.closest('.panel')) return
@@ -109,7 +141,6 @@
 
   function handleSnapshot() {
     const currentLayout = get(panelStates)
-    // Create a deep copy to ensure all nested properties are saved
     const layoutCopy = JSON.parse(JSON.stringify(currentLayout))
     const presetName = `Preset ${get(layoutPresets).length + 1}`
     layoutPresets.update((presets) => [
@@ -119,7 +150,6 @@
   }
 
   function handleApplyPreset(layout) {
-    // Use a deep copy to prevent direct mutation of the preset store
     panelStates.set(JSON.parse(JSON.stringify(layout)))
   }
 
@@ -135,6 +165,8 @@
     )
   }
 </script>
+
+<svelte:window on:keydown={handleKeydown} />
 
 <div
   class="h-full w-full bg-lab-metal font-sci text-neon-teal relative overflow-hidden"
