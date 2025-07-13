@@ -1,6 +1,6 @@
 <script>
+  import { onMount } from 'svelte'
   import { inputs, playingInputs } from './stores.js'
-  // FIX: Corrected the import path. Both files are in the same /lib directory.
   import { sendCommand, queryVmixXpath } from './vmix.js'
 
   const MUSIC_INPUT_NAME = 'LIST - MUSIC'
@@ -16,11 +16,68 @@
   let isRestartFlashing = false
   let isPrevFlashing = false
   let isNextFlashing = false
+  let nowPlayingName = 'Paused'
 
-  /**
-   * This function efficiently asks vMix for just the selectedIndex
-   * and updates our local state, ensuring the UI is always accurate.
-   */
+  async function updateNowPlayingDisplay() {
+    if (!musicInput) return
+    const indexXpath = `vmix/inputs/input[@shortTitle='${MUSIC_INPUT_NAME}']/@selectedIndex`
+    const selectedIndexResult = await queryVmixXpath(indexXpath)
+    if (selectedIndexResult === null) return
+
+    const currentSelectedIndex = parseInt(selectedIndexResult, 10)
+
+    const titleXpath = `vmix/inputs/input[@shortTitle='${MUSIC_INPUT_NAME}']/list/item[${currentSelectedIndex}]`
+    const titleResult = await queryVmixXpath(titleXpath)
+
+    if (titleResult !== null) {
+      nowPlayingName = $playingInputs.has(musicInput.id)
+        ? titleResult
+        : 'Paused'
+    }
+  }
+
+  // NEW: Exposing the refresh function so the parent component can call it.
+  export function refresh() {
+    updateNowPlayingDisplay()
+  }
+
+  onMount(() => {
+    setTimeout(updateNowPlayingDisplay, 500)
+  })
+
+  function selectTrack(trackIndex) {
+    const inputName = musicInput.shortTitle
+    const itemNumber = trackIndex + 1
+    sendCommand(`FUNCTION SelectIndex Input=${inputName}&Value=${itemNumber}`)
+
+    inputs.update((allInputs) => {
+      const targetInput = allInputs.find((i) => i.id === musicInput.id)
+      if (targetInput) {
+        targetInput.selectedIndex = itemNumber
+      }
+      return allInputs
+    })
+  }
+
+  async function handleFlashClick(command) {
+    sendCommand(`FUNCTION ${command} Input=${musicInput.shortTitle}`)
+
+    if (command === 'Restart') {
+      isRestartFlashing = true
+      setTimeout(() => (isRestartFlashing = false), 300)
+    } else if (command === 'PreviousItem') {
+      isPrevFlashing = true
+      setTimeout(() => (isPrevFlashing = false), 300)
+    } else if (command === 'NextItem') {
+      isNextFlashing = true
+      setTimeout(() => (isNextFlashing = false), 300)
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    await refreshSelectedIndex()
+  }
+
+  // This function is now only used by handleFlashClick
   async function refreshSelectedIndex() {
     if (!musicInput) return
     const xpath = `vmix/inputs/input[@shortTitle='${MUSIC_INPUT_NAME}']/@selectedIndex`
@@ -36,64 +93,12 @@
       })
     }
   }
-
-  function selectTrack(trackIndex) {
-    const inputName = musicInput.shortTitle
-    const itemNumber = trackIndex + 1
-    sendCommand(`FUNCTION SelectIndex Input=${inputName}&Value=${itemNumber}`)
-    // After selecting, optimistically update our UI right away.
-    inputs.update((allInputs) => {
-      const targetInput = allInputs.find((i) => i.id === musicInput.id)
-      if (targetInput) {
-        targetInput.selectedIndex = itemNumber
-      }
-      return allInputs
-    })
-  }
-
-  /**
-   * UPDATED: Now refreshes the state from vMix after the command is sent.
-   */
-  async function handleFlashClick(command) {
-    sendCommand(`FUNCTION ${command} Input=${musicInput.shortTitle}`)
-
-    // Trigger the button flash effect
-    if (command === 'Restart') {
-      isRestartFlashing = true
-      setTimeout(() => (isRestartFlashing = false), 300)
-    } else if (command === 'PreviousItem') {
-      isPrevFlashing = true
-      setTimeout(() => (isPrevFlashing = false), 300)
-    } else if (command === 'NextItem') {
-      isNextFlashing = true
-      setTimeout(() => (isNextFlashing = false), 300)
-    }
-
-    // After sending the command, wait a moment then ask vMix for the new state.
-    await new Promise((resolve) => setTimeout(resolve, 50))
-    await refreshSelectedIndex()
-  }
-
-  $: nowPlayingName = (() => {
-    if (!musicInput || !trackList[vmixSelectedIndex]) return 'Paused'
-    return trackList[vmixSelectedIndex].name
-  })()
 </script>
 
 <div class="music-container">
   {#if musicInput}
-    <div
-      class="now-playing-container"
-      title={isPlaying ? nowPlayingName : 'Paused'}
-    >
-      <div class="now-playing-text-wrapper">
-        <span
-          class="now-playing-text"
-          class:scrolling={isPlaying && nowPlayingName.length > 20}
-        >
-          {isPlaying ? nowPlayingName : 'Paused'}
-        </span>
-      </div>
+    <div class="now-playing-container" title={nowPlayingName}>
+      <span class="now-playing-text">{nowPlayingName}</span>
     </div>
 
     <div class="button-row">
@@ -125,6 +130,39 @@
         on:click={() => handleFlashClick('NextItem')}
         title="Next">»</button
       >
+      <button
+        class="control-btn mute-btn"
+        class:muted={musicInput.muted}
+        on:click={() =>
+          sendCommand(`FUNCTION Audio Input=${musicInput.shortTitle}`)}
+        title="Toggle Mute"
+        aria-label="Toggle Mute"
+      >
+        {#if musicInput.muted}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
+            <path
+              d="M13.5 4.06c0-1.336-1.306-2.32-2.434-1.636L3.216 9H1.5A1.5 1.5 0 0 0 0 10.5v3A1.5 1.5 0 0 0 1.5 15H3.22l7.849 5.86a1.5 1.5 0 0 0 2.434-.937A1.5 1.5 0 0 0 13.5 19.5v-15a1.5 1.5 0 0 0 0-.44Z"
+            />
+            <path
+              d="M19.5 12c0 .414.336.75.75.75h.001a.75.75 0 0 0 0-1.5h-.001a.75.75 0 0 0-.75.75Zm-2.25.75a.75.75 0 0 1-.75-.75c0-.414.336-.75.75-.75h.001a.75.75 0 0 1 0 1.5h-.001ZM15 12.75a.75.75 0 0 0 0-1.5h-.001a.75.75 0 0 0 0 1.5h.001Z"
+            />
+          </svg>
+        {:else}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
+            <path
+              d="M13.5 4.06c0-1.336-1.306-2.32-2.434-1.636L3.216 9H1.5A1.5 1.5 0 0 0 0 10.5v3A1.5 1.5 0 0 0 1.5 15H3.22l7.849 5.86a1.5 1.5 0 0 0 2.434-.937A1.5 1.5 0 0 0 13.5 19.5v-15a1.5 1.5 0 0 0 0-.44ZM17 7.5a.75.75 0 0 1 .75.75v7.5a.75.75 0 0 1-1.5 0V8.25A.75.75 0 0 1 17 7.5ZM20.5 5.25a.75.75 0 0 1 .75.75v12a.75.75 0 0 1-1.5 0V6a.75.75 0 0 1 .75-.75Z"
+            />
+          </svg>
+        {/if}
+      </button>
     </div>
 
     <div class="track-list-container">
@@ -154,14 +192,6 @@
 </div>
 
 <style>
-  @keyframes scroll-text {
-    from {
-      transform: translateX(100%);
-    }
-    to {
-      transform: translateX(-100%);
-    }
-  }
   .music-container {
     height: 100%;
     display: flex;
@@ -174,29 +204,23 @@
     padding: 0 10px;
     overflow: hidden;
     white-space: nowrap;
+    text-overflow: ellipsis;
     border: 1px solid #4a4a4e;
     text-align: center;
     color: #14ffec;
     font-weight: bold;
-    height: 80px;
+    height: 300px;
     font-size: 1.5em;
     display: flex;
     align-items: center;
     justify-content: center;
   }
-  .now-playing-text-wrapper {
-    width: 100%;
-    overflow: hidden;
-  }
   .now-playing-text {
     display: inline-block;
   }
-  .now-playing-text.scrolling {
-    animation: scroll-text 15s linear infinite;
-  }
   .button-row {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 8px;
   }
   .control-btn {
@@ -211,6 +235,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 5px;
   }
   .control-btn:hover {
     background-color: #555;
@@ -221,6 +246,14 @@
   }
   .play-btn.playing {
     background-color: #16a34a;
+    color: white;
+  }
+  .mute-btn svg {
+    width: 28px;
+    height: 28px;
+  }
+  .mute-btn.muted {
+    background-color: #c53030;
     color: white;
   }
   .track-list-container {

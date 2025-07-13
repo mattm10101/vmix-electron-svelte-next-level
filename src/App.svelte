@@ -31,6 +31,9 @@
   import Scripts from './lib/Scripts.svelte'
   import MarqueeBox from './lib/MarqueeBox.svelte'
 
+  // NEW: A variable to hold the Music component instance
+  let musicComponent
+
   const filteredInputs = derived(
     [inputs, visibilityOptions],
     ([$inputs, $opts]) => {
@@ -43,13 +46,8 @@
   )
 
   onMount(() => {
-    // Initialize the real-time listener
     initializeVmixListener()
-    // Fetch all inputs just once on startup
     fetchAllInputs()
-
-    // FIX: The polling interval has been removed for efficiency.
-    // The manual refresh button will now be used to get new inputs.
 
     window.addEventListener('mousedown', handleWindowMouseDown)
     return () => {
@@ -106,7 +104,6 @@
     marquee.set({ visible: false, x: 0, y: 0, width: 0, height: 0 })
   }
 
-  // --- Preset Handlers (Updated for Svelte 5) ---
   function handleSnapshot() {
     const currentLayout = get(panelStates)
     const presetName = `Preset ${get(layoutPresets).length + 1}`
@@ -170,9 +167,16 @@
   <Panel
     id="music"
     title="Music"
-    defaultState={{ x: 1050, y: 840, width: 220, height: 280, z: 1 }}
+    defaultState={{ x: 1050, y: 840, width: 220, height: 300, z: 1 }}
   >
-    <Music />
+    <div slot="header-controls">
+      <button
+        class="panel-control"
+        on:click={() => musicComponent?.refresh()}
+        title="Refresh Music Player">⟳</button
+      >
+    </div>
+    <Music bind:this={musicComponent} />
   </Panel>
 
   <Panel

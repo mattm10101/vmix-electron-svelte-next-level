@@ -1,3 +1,4 @@
+import { get } from 'svelte/store' // We need 'get' to read the store value inside the listener
 import {
   inputs,
   logMessages,
@@ -43,7 +44,6 @@ export async function fetchAllInputs() {
   }
 }
 
-// NEW: Helper function to query a single value from vMix using XPath
 export async function queryVmixXpath(xpath) {
   if (!window.electronAPI) {
     addLog('ERROR: electronAPI is not available.', 'error')
@@ -83,6 +83,17 @@ export function initializeVmixListener() {
               ? currentSet.add(inputNum)
               : currentSet.delete(inputNum)
             return new Set(currentSet)
+          })
+          break
+        // NEW: Handle the mute state for any input
+        case 'InputAudio':
+          inputs.update((currentInputs) => {
+            const targetInput = currentInputs.find((i) => i.id === inputNum)
+            if (targetInput) {
+              // vMix sends '1' for ON (not muted) and '0' for OFF (muted)
+              targetInput.muted = state === '0'
+            }
+            return currentInputs
           })
           break
         case 'MasterAudio':
