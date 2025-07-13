@@ -1,6 +1,7 @@
 <script>
   import { inputs, playingInputs } from './stores.js'
-  import { sendCommand } from './vmix.js'
+  // FIX: Corrected the import path. Both files are in the same /lib directory.
+  import { sendCommand, queryVmixXpath } from './vmix.js'
 
   const MUSIC_INPUT_NAME = 'LIST - MUSIC'
 
@@ -17,22 +18,30 @@
   let isNextFlashing = false
 
   /**
-   * FINAL LOGIC: A single click on a track now selects it and immediately
-   * sends the Play command. This ensures the clicked track always plays.
+   * This function efficiently asks vMix for just the selectedIndex
+   * and updates our local state, ensuring the UI is always accurate.
    */
-  function playTrack(trackIndex) {
+  async function refreshSelectedIndex() {
+    if (!musicInput) return
+    const xpath = `vmix/inputs/input[@shortTitle='${MUSIC_INPUT_NAME}']/@selectedIndex`
+    const newIndex = await queryVmixXpath(xpath)
+
+    if (newIndex !== null) {
+      inputs.update((allInputs) => {
+        const targetInput = allInputs.find((i) => i.id === musicInput.id)
+        if (targetInput) {
+          targetInput.selectedIndex = parseInt(newIndex, 10)
+        }
+        return allInputs
+      })
+    }
+  }
+
+  function selectTrack(trackIndex) {
     const inputName = musicInput.shortTitle
     const itemNumber = trackIndex + 1
-
-    // 1. Tell vMix to select the index.
-    sendCommand(`FUNCTION SelectIndex Input=${inputName} Value=${itemNumber}`)
-
-    // 2. After a short delay to ensure SelectIndex is processed, send Play.
-    setTimeout(() => {
-      sendCommand(`FUNCTION Play Input=${inputName}`)
-    }, 50) // 50ms is a safe delay
-
-    // 3. Optimistically update our UI so the selection moves instantly.
+    sendCommand(`FUNCTION SelectIndex Input=${inputName}&Value=${itemNumber}`)
+    // After selecting, optimistically update our UI right away.
     inputs.update((allInputs) => {
       const targetInput = allInputs.find((i) => i.id === musicInput.id)
       if (targetInput) {
@@ -42,10 +51,13 @@
     })
   }
 
-  // Handles the flash effect for the control buttons
-  function handleFlashClick(command) {
+  /**
+   * UPDATED: Now refreshes the state from vMix after the command is sent.
+   */
+  async function handleFlashClick(command) {
     sendCommand(`FUNCTION ${command} Input=${musicInput.shortTitle}`)
 
+    // Trigger the button flash effect
     if (command === 'Restart') {
       isRestartFlashing = true
       setTimeout(() => (isRestartFlashing = false), 300)
@@ -56,9 +68,12 @@
       isNextFlashing = true
       setTimeout(() => (isNextFlashing = false), 300)
     }
+
+    // After sending the command, wait a moment then ask vMix for the new state.
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    await refreshSelectedIndex()
   }
 
-  // Find the name of the track that vMix reports as selected.
   $: nowPlayingName = (() => {
     if (!musicInput || !trackList[vmixSelectedIndex]) return 'Paused'
     return trackList[vmixSelectedIndex].name
@@ -121,7 +136,7 @@
             class="track-item"
             class:cued={isSelected}
             class:playing={isPlayingTrack}
-            on:click={() => playTrack(i)}
+            on:click={() => selectTrack(i)}
             title={track.name}
           >
             <span class="track-index">{i + 1}</span>
