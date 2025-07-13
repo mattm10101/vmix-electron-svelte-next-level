@@ -1,4 +1,4 @@
-import { writable, derived, get } from 'svelte/store' // FIX: Added 'get' to the import
+import { writable, derived, get } from 'svelte/store'
 import { persistentStore } from './persistentStore.js'
 import { defaultLayout } from './defaultLayout.js'
 
@@ -13,16 +13,11 @@ export const overlay1ActiveInput = writable(0)
 
 // --- UI & Application State ---
 export const logMessages = writable([])
-
 export const savedDefaultLayout = persistentStore('savedDefaultLayout', null)
-
-// The panelStates store now intelligently loads the user's saved default if it exists,
-// otherwise it falls back to the hardcoded default.
 export const panelStates = persistentStore(
   'panelStates',
   get(savedDefaultLayout) || defaultLayout
 )
-
 export const layoutPresets = persistentStore('layoutPresets', [])
 export const scriptManager = persistentStore('scriptManager', {
   scripts: [
@@ -31,13 +26,11 @@ export const scriptManager = persistentStore('scriptManager', {
   ],
   layout: 2,
 })
-
 export const visibilityOptions = persistentStore('visibilityOptions', {
   showNumbers: true,
   showL3s: true,
   showPreviewLed: true,
 })
-
 export const gridOptions = persistentStore('gridOptions', {
   show: true,
   snapSize: 10,
@@ -54,7 +47,6 @@ export const marquee = writable({
   height: 0,
 })
 export const selectedPanelIds = writable(new Set())
-
 export const modalStore = writable({
   isOpen: false,
   message: '',

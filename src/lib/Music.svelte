@@ -147,8 +147,19 @@
           sendCommand(`FUNCTION PlayPause Input=${musicInput.shortTitle}`)}
         title="Play/Pause"
         aria-label="Play/Pause"
-        >{#if isPlaying}⏸{:else}▶{/if}</button
       >
+        {#if isPlaying}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
+            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+          </svg>
+        {:else}
+          ▶
+        {/if}
+      </button>
       <button
         class="control-btn"
         class:flashing={isNextFlashing}
@@ -247,13 +258,12 @@
     border: 1px solid #4a4a4e;
     color: #14ffec;
     font-weight: bold;
-    height: 300px;
+    height: 300px; /* FIXED: Restored height to 300px */
     font-size: 1.25em;
     display: flex;
     align-items: center;
     justify-content: flex-start;
     cursor: pointer;
-    /* Add this to make the button look like a div */
     text-align: left;
     width: 100%;
   }
@@ -299,14 +309,21 @@
     border-color: #00d0ff;
     box-shadow: 0 0 12px 2px #00d0ff;
   }
+
   .play-btn.playing {
     background-color: #16a34a;
     color: white;
+    border-color: #22c55e;
+    box-shadow:
+      0 0 8px #22c55e,
+      0 0 15px #16a34a;
   }
-  .mute-btn svg {
-    width: 28px;
-    height: 28px;
+
+  .control-btn svg {
+    width: 24px;
+    height: 24px;
   }
+
   .mute-btn.muted {
     background-color: #c53030;
     color: white;

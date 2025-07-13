@@ -73,23 +73,32 @@
     const shift = event.shiftKey
     const keyNumber = parseInt(key, 10)
 
-    // --- Add Snapshot: '+' (Shift + '=') ---
-    if (key === '+' || (key === '=' && shift)) {
+    // --- Save Default Layout: '~' (Tilde) ---
+    if (key === '~') {
       event.preventDefault()
-      handleSnapshot()
-      addLog('Layout snapshot created with hotkey (+).', 'info')
+      const currentLayout = get(panelStates)
+      savedDefaultLayout.set(currentLayout)
+      addLog('Current layout saved as new default with hotkey (~).', 'info')
       return
     }
 
-    // --- Delete Last Preset: '_' (Shift + '-') ---
-    if (key === '_' || (key === '-' && shift)) {
+    // --- Add Snapshot with '=' ---
+    if (key === '=' && !shift) {
+      event.preventDefault()
+      handleSnapshot()
+      addLog('Layout snapshot created with hotkey (=).', 'info')
+      return
+    }
+
+    // --- Delete Last Preset with '-' ---
+    if (key === '-' && !shift) {
       event.preventDefault()
       const currentPresets = get(layoutPresets)
       if (currentPresets.length > 0) {
         const lastPreset = currentPresets[currentPresets.length - 1]
         handleDeletePreset(lastPreset.id)
         addLog(
-          `Deleted last preset "${lastPreset.name}" with hotkey (_).`,
+          `Deleted last preset "${lastPreset.name}" with hotkey (-).`,
           'info'
         )
       }
