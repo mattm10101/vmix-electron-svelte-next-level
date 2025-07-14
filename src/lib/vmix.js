@@ -12,7 +12,6 @@ import {
 
 let logId = 0
 
-// FIXED: Added the 'export' keyword here.
 export function addLog(message, type = 'info') {
   const timestamp = new Date().toLocaleTimeString()
   logMessages.update((currentMessages) => {
@@ -65,22 +64,27 @@ export function initializeVmixListener() {
   if (window.electronAPI) {
     window.electronAPI.receive((message) => {
       addLog(`RECV: ${message}`, 'received')
-      if (!message.startsWith('ACTS OK ')) return
 
       const parts = message.split(' ')
+      if (parts[0] !== 'ACTS' || parts[1] !== 'OK') return
+
       const activator = parts[2]
-      const inputNum = parseInt(parts[3], 10)
+      const value = parts[3]
       const state = parts.length > 4 ? parts[4] : undefined
 
       switch (activator) {
         case 'Input':
-          programInput.set(state === '1' ? inputNum : 0)
+          programInput.set(state === '1' ? parseInt(value, 10) : 0)
           break
+
+        // FIXED: This now correctly parses the value as a number, just like the 'Input' case.
         case 'InputPreview':
-          previewInput.set(state === '1' ? inputNum : 0)
+          previewInput.set(state === '1' ? parseInt(value, 10) : 0)
           break
+
         case 'InputPlaying':
           playingInputs.update((currentSet) => {
+            const inputNum = parseInt(value, 10)
             state === '1'
               ? currentSet.add(inputNum)
               : currentSet.delete(inputNum)
@@ -89,6 +93,7 @@ export function initializeVmixListener() {
           break
         case 'InputAudio':
           inputs.update((currentInputs) => {
+            const inputNum = parseInt(value, 10)
             const targetInput = currentInputs.find((i) => i.id === inputNum)
             if (targetInput) {
               targetInput.muted = state === '0'
@@ -97,13 +102,13 @@ export function initializeVmixListener() {
           })
           break
         case 'Overlay1':
-          overlay1ActiveInput.set(state === '1' ? inputNum : 0)
+          overlay1ActiveInput.set(state === '1' ? parseInt(value, 10) : 0)
           break
         case 'MasterAudio':
-          isMasterAudioMuted.set(parts[3] === '0')
+          isMasterAudioMuted.set(value === '0')
           break
         case 'MasterVolume':
-          masterVolume.set(Math.round(parseFloat(parts[3]) ** 0.25 * 100))
+          masterVolume.set(Math.round(parseFloat(value) ** 0.25 * 100))
           break
       }
     })

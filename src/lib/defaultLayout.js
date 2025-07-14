@@ -44,6 +44,24 @@ export const defaultLayout = {
     min: false,
     visible: true,
   },
+  videos: {
+    x: 820,
+    y: 840,
+    width: 220,
+    height: 300,
+    z: 1,
+    min: false,
+    visible: true,
+  },
+  images: {
+    x: 610,
+    y: 840,
+    width: 220,
+    height: 300,
+    z: 1,
+    min: false,
+    visible: true,
+  },
   scripts: {
     x: 20,
     y: 770,
@@ -80,7 +98,6 @@ export const defaultLayout = {
     min: false,
     visible: true,
   },
-  // NEW: Default state for the Options panel
   options: {
     x: 660,
     y: 770,

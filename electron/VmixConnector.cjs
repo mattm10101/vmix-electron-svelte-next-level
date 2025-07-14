@@ -8,8 +8,6 @@ class VmixConnector {
     this.client = new net.Socket()
     this.isConnected = false
     this.buffer = Buffer.alloc(0)
-
-    // Store promises for different command types
     this.pendingQueries = new Map()
 
     this.client.on('data', (data) => this.handleData(data))
@@ -24,6 +22,7 @@ class VmixConnector {
     this.client.connect(this.port, this.host, () => {
       console.log('vMix TCP Connected')
       this.isConnected = true
+      // REVERTED: Now subscribing to ACTS again.
       this.sendCommand('SUBSCRIBE ACTS')
     })
   }
@@ -58,7 +57,7 @@ class VmixConnector {
           this.buffer = this.buffer.slice(totalLength)
           continue
         } else {
-          break // Wait for more data
+          break
         }
       } else if (command === 'XMLTEXT' && this.pendingQueries.has('XMLTEXT')) {
         const responseValue = parts.slice(2).join(' ')
@@ -69,7 +68,6 @@ class VmixConnector {
           this.mainWindow.webContents.send('from-vmix', line)
         }
       }
-      // For all other single-line responses like FUNCTION OK, we can just consume them.
 
       this.buffer = this.buffer.slice(crlfIndex + 2)
     }
@@ -107,7 +105,6 @@ class VmixConnector {
     return promise
   }
 
-  // NEW: Method specifically for XMLTEXT queries
   queryXpath(xpath) {
     const promise = this._createPendingQuery('XMLTEXT')
     this.sendCommand(`XMLTEXT ${xpath}`)
@@ -117,7 +114,6 @@ class VmixConnector {
   handleClose() {
     console.log('vMix TCP connection closed. Reconnecting in 5 seconds...')
     this.isConnected = false
-    // Reject any pending queries on disconnect
     for (const [key, query] of this.pendingQueries.entries()) {
       query.reject(new Error('vMix disconnected'))
     }

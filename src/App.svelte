@@ -32,6 +32,8 @@
   import InputOptions from './lib/InputOptions.svelte'
   import LowerThirds from './lib/LowerThirds.svelte'
   import Music from './lib/Music.svelte'
+  import Videos from './lib/Videos.svelte'
+  import Images from './lib/Images.svelte'
   import Scripts from './lib/Scripts.svelte'
   import MarqueeBox from './lib/MarqueeBox.svelte'
   import Options from './lib/Options.svelte'
@@ -262,6 +264,22 @@
       >
     </div>
     <Music bind:this={musicComponent} />
+  </Panel>
+
+  <Panel
+    id="videos"
+    title="Videos"
+    defaultState={{ x: 820, y: 840, width: 220, height: 300, z: 1 }}
+  >
+    <Videos />
+  </Panel>
+
+  <Panel
+    id="images"
+    title="Images"
+    defaultState={{ x: 610, y: 840, width: 220, height: 300, z: 1 }}
+  >
+    <Images />
   </Panel>
 
   <Panel
