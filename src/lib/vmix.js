@@ -77,7 +77,6 @@ export function initializeVmixListener() {
           programInput.set(state === '1' ? parseInt(value, 10) : 0)
           break
 
-        // FIXED: This now correctly parses the value as a number, just like the 'Input' case.
         case 'InputPreview':
           previewInput.set(state === '1' ? parseInt(value, 10) : 0)
           break
@@ -101,6 +100,20 @@ export function initializeVmixListener() {
             return currentInputs
           })
           break
+
+        // NEW: Handle live volume changes for any input
+        case 'InputVolume':
+          inputs.update((allInputs) => {
+            const inputNum = parseInt(value, 10)
+            const targetInput = allInputs.find((i) => i.id === inputNum)
+            if (targetInput) {
+              // Apply the same curve as MasterVolume for consistency
+              targetInput.volume = Math.round(parseFloat(state) ** 0.25 * 100)
+            }
+            return allInputs
+          })
+          break
+
         case 'Overlay1':
           overlay1ActiveInput.set(state === '1' ? parseInt(value, 10) : 0)
           break

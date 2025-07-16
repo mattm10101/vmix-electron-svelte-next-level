@@ -1,14 +1,20 @@
 <script>
   import { onMount, tick } from 'svelte'
-  import { inputs, playingInputs } from './stores.js'
+  import {
+    inputs,
+    playingInputs,
+    programInput,
+    previewInput,
+  } from './stores.js'
   import { sendCommand, queryVmixXpath } from './vmix.js'
 
   const VIDEOS_INPUT_NAME = 'LIST - VIDEOS'
 
-  // Reactive state derived from stores
+  let debounceTimer
+  let localSelectedIndex = -1
+
   $: videoInput = $inputs.find((i) => i.shortTitle === VIDEOS_INPUT_NAME)
   $: isPlaying = videoInput && $playingInputs.has(videoInput.id)
-  $: isMuted = videoInput?.muted
   $: trackList = videoInput?.list || []
   $: vmixSelectedIndex = videoInput?.selectedIndex
     ? videoInput.selectedIndex - 1
@@ -18,7 +24,6 @@
     return trackList[vmixSelectedIndex].name
   })()
 
-  // --- Animation Logic & State ---
   let isRestartFlashing = false
   let isPrevFlashing = false
   let isNextFlashing = false
@@ -56,6 +61,24 @@
     }
   }
 
+  function handleVolumeChange(event) {
+    if (!videoInput) return
+    const newVolume = event.target.value
+
+    inputs.update((all_inputs) => {
+      const my_input = all_inputs.find((i) => i.id === videoInput.id)
+      if (my_input) my_input.volume = newVolume
+      return all_inputs
+    })
+
+    clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+      sendCommand(
+        `FUNCTION SetVolume Input=${videoInput.key}&Value=${newVolume}`
+      )
+    }, 100)
+  }
+
   async function refreshSelectedIndex() {
     if (!videoInput) return
     const xpath = `vmix/inputs/input[@shortTitle='${VIDEOS_INPUT_NAME}']/@selectedIndex`
@@ -73,6 +96,7 @@
   }
 
   function selectTrack(trackIndex) {
+    localSelectedIndex = trackIndex
     const inputName = videoInput.shortTitle
     const itemNumber = trackIndex + 1
     sendCommand(`FUNCTION SelectIndex Input=${inputName}&Value=${itemNumber}`)
@@ -145,6 +169,18 @@
         </span>
       </div>
     </button>
+
+    <div class="fader-container">
+      <input
+        type="range"
+        min="0"
+        max="100"
+        class="fader"
+        value={videoInput.volume ?? 100}
+        on:input={handleVolumeChange}
+      />
+      <div class="fader-value">{Math.round(videoInput.volume ?? 100)}</div>
+    </div>
 
     <div class="button-row">
       <button
@@ -246,6 +282,51 @@
   .now-playing-text.scrolling {
     animation: pause-scroll-fade 5.625s linear infinite;
   }
+
+  .fader-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 5px 0;
+  }
+  .fader {
+    flex-grow: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 8px;
+    background: #4a4a4e;
+    border-radius: 5px;
+    outline: none;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+  .fader:hover {
+    opacity: 1;
+  }
+  .fader::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: #14ffec;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  .fader::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: #14ffec;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  .fader-value {
+    font-weight: bold;
+    color: #14ffec;
+    min-width: 30px;
+    text-align: right;
+  }
+
   .button-row {
     display: grid;
     grid-template-columns: repeat(4, 1fr);

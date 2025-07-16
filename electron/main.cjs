@@ -22,7 +22,6 @@ function createWindow() {
     vmixConnector.sendCommand(command)
   })
 
-  // NEW: IPC handler for XPath queries
   ipcMain.handle('query-xpath', async (_, xpath) => {
     try {
       return await vmixConnector.queryXpath(xpath)
@@ -57,7 +56,7 @@ function createWindow() {
             const isObject = typeof item === 'object' && item !== null
             const itemName = isObject ? item['#text'] : item
             return {
-              id: `${input.key}-${index}`, // Use input key for more stable ID
+              id: `${input.key}-${index}`,
               name: path.basename(itemName || ''),
               selected: isObject ? item.selected === 'true' : false,
             }
@@ -71,7 +70,8 @@ function createWindow() {
           state: input.state,
           muted: String(input.muted).toLowerCase() === 'true',
           selectedIndex: parseInt(input.selectedIndex, 10),
-          list: items,
+          // FIXED: Correctly handles a volume attribute of 0.
+          volume: input.volume !== undefined ? parseFloat(input.volume) : 100,
         }
       })
     } catch (error) {
