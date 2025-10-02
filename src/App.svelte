@@ -33,7 +33,7 @@
   import LowerThirds from './lib/LowerThirds.svelte'
   import Music from './lib/Music.svelte'
   import Videos from './lib/Videos.svelte'
-  import Images from './lib/Images.svelte'
+  import Photos from './lib/Photos.svelte'
   import Scripts from './lib/Scripts.svelte'
   import MarqueeBox from './lib/MarqueeBox.svelte'
   import Options from './lib/Options.svelte'
@@ -275,11 +275,11 @@
   </Panel>
 
   <Panel
-    id="images"
-    title="Images"
-    defaultState={{ x: 610, y: 840, width: 220, height: 300, z: 1 }}
+    id="photos"
+    title="Photos"
+    defaultState={{ x: 610, y: 840, width: 220, height: 120, z: 1 }}
   >
-    <Images />
+    <Photos />
   </Panel>
 
   <Panel

@@ -53,11 +53,11 @@ export const defaultLayout = {
     min: false,
     visible: true,
   },
-  images: {
+  photos: {
     x: 610,
     y: 840,
     width: 220,
-    height: 300,
+    height: 120, // A shorter height is suitable
     z: 1,
     min: false,
     visible: true,
