@@ -2,11 +2,12 @@
   import { tick } from 'svelte';
   import { derived } from 'svelte/store';
   import { inputs, playingInputs, inputMappings } from './stores.js';
-  import { sendCommandAndRefresh } from './vmix.js';
+  import { sendCommandAndRefresh, sendCommand } from './vmix.js';
   import ListTrackList from './ListTrackList.svelte';
   import ListTransportControls from './ListTransportControls.svelte';
 
   let uiCuedIndex = -1;
+  let throttleTimer = null;
 
   const targetInputName = derived(inputMappings, ($mappings) => $mappings.music);
   const musicInput = derived(
@@ -73,39 +74,50 @@
     uiCuedIndex = -1;
   }
 
-  // --- UPDATED: The final, correct transport logic ---
   function handleTransportCommand(event) {
     if (!$musicInput) return;
     const command = event.detail;
 
-    // The only command with special logic is Play/Pause
     if (command === 'PlayPause') {
       if (isPlaying) {
-        // CONTEXT 1: A track is currently playing.
-        // The button is a simple toggle and IGNORES the uiCuedIndex for safety.
         sendCommandAndRefresh(`FUNCTION PlayPause Input=${$musicInput.key}`);
       } else {
-        // CONTEXT 2: Nothing is playing.
-        // Check if the user has visually cued a track.
         if (uiCuedIndex !== -1) {
-          // A track is cued, so play that one.
           const itemNumber = uiCuedIndex + 1;
           sendCommandAndRefresh(`FUNCTION SelectIndex Input=${$musicInput.key}&Value=${itemNumber}`);
           setTimeout(() => {
             sendCommandAndRefresh(`FUNCTION Play Input=${$musicInput.key}`);
           }, 50);
         } else {
-          // Nothing is visually cued, so just toggle play on whatever vMix has selected.
           sendCommandAndRefresh(`FUNCTION PlayPause Input=${$musicInput.key}`);
         }
       }
     } else {
-      // For all other commands (NextItem, Restart, etc.), the behavior is always the same.
       sendCommandAndRefresh(`FUNCTION ${command} Input=${$musicInput.key}`);
     }
     
-    // Any transport action clears the visual cue.
     uiCuedIndex = -1;
+  }
+
+  // --- UPDATED: Handler now sends the correct 0-100 value ---
+  function handleVolumeChange(event) {
+    if (!$musicInput) return;
+    const uiVolume = event.target.value;
+
+    inputs.update((all) => {
+      const myInput = all.find((i) => i.id === $musicInput.id);
+      if (myInput) myInput.volume = uiVolume;
+      return all;
+    });
+
+    if (throttleTimer) return;
+
+    throttleTimer = setTimeout(() => {
+      throttleTimer = null;
+    }, 50);
+
+    // REMOVED the incorrect calculation. We now send the direct slider value.
+    sendCommand(`FUNCTION SetVolume Input=${$musicInput.key}&Value=${uiVolume}`);
   }
 </script>
 
@@ -148,16 +160,27 @@
       </button>
     </div>
 
-    <div class="track-list-outer-wrapper">
-      <ListTrackList
-        listInput={$musicInput}
-        {isPlaying}
-        uiCuedIndex={uiCuedIndex}
-        listType="music"
-        on:trackClick={handleTrackClick}
-        on:trackDblClick={handleTrackDoubleClick}
+    <div class="fader-container">
+      <input
+        type="range"
+        min="0"
+        max="100"
+        class="fader"
+        value={$musicInput.volume ?? 100}
+        on:input={handleVolumeChange}
       />
+      <div class="fader-value">{Math.round($musicInput.volume ?? 100)}</div>
     </div>
+
+    <ListTrackList
+      class="track-list-scroller"
+      listInput={$musicInput}
+      {isPlaying}
+      uiCuedIndex={uiCuedIndex}
+      listType="music"
+      on:trackClick={handleTrackClick}
+      on:trackDblClick={handleTrackDoubleClick}
+    />
 
     <div class="source-display">
       SOURCE: {$targetInputName}
@@ -172,8 +195,12 @@
 
 <style>
   @keyframes pause-scroll-fade { 0%, 35% { transform: translateX(0); opacity: 1; } 91% { transform: translateX(var(--scroll-distance)); opacity: 1; } 100% { transform: translateX(var(--scroll-distance)); opacity: 0; } }
-  .music-container { height: 100%; display: flex; flex-direction: column; gap: 12px; }
-  .track-list-outer-wrapper { flex-grow: 1; min-height: 0; }
+  .music-container { height: 100%; display: flex; flex-direction: column; padding: 15px; }
+  .now-playing-container { margin-bottom: 12px; }
+  .controls-wrapper { margin-bottom: 12px; }
+  .fader-container { margin-bottom: 12px; }
+  .source-display { margin-top: 12px; }
+  :global(.track-list-scroller) { flex-grow: 1; min-height: 0; }
   .now-playing-container { background-color: #1f1f23; border-radius: 5px; padding: 0 10px; overflow: hidden; border: 1px solid #4a4a4e; color: #14ffec; font-weight: bold; height: 40px; font-size: 1.25em; display: flex; align-items: center; cursor: pointer; text-align: left; width: 100%; flex-shrink: 0; }
   .now-playing-text-wrapper { width: 100%; overflow: hidden; }
   .now-playing-text { display: inline-block; white-space: nowrap; text-align: left; --scroll-distance: 0px; }
@@ -184,6 +211,12 @@
   .control-btn:hover { background-color: #555; }
   .mute-btn.muted { background-color: #c53030; color: white; }
   .control-btn svg { width: 24px; height: 24px; }
-  .source-display { font-family: 'Courier New', Courier, monospace; font-size: 0.75em; color: #888; text-align: center; padding-top: 10px; border-top: 1px solid #3a3a3e; flex-shrink: 0; }
+  .fader-container { display: flex; align-items: center; gap: 15px; flex-shrink: 0; }
+  .fader { flex-grow: 1; -webkit-appearance: none; appearance: none; width: 100%; height: 8px; background: #4a4a4e; border-radius: 5px; outline: none; opacity: 0.7; transition: opacity 0.2s; }
+  .fader:hover { opacity: 1; }
+  .fader::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; background: #14ffec; border-radius: 50%; cursor: pointer; }
+  .fader::-moz-range-thumb { width: 20px; height: 20px; background: #14ffec; border-radius: 50%; cursor: pointer; }
+  .fader-value { font-weight: bold; color: #14ffec; min-width: 30px; text-align: right; }
+  .source-display { font-family: 'Courier New', Courier, monospace; font-size: 0.75em; color: #888; text-align: center; flex-shrink: 0; padding-top: 10px; border-top: 1px solid #3a3a3e; }
   .placeholder { color: #888; text-align: center; margin: auto 0; }
 </style>

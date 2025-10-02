@@ -14,6 +14,11 @@ import {
 
 let logId = 0
 
+const isTargetInput = (input, identifier) =>
+  String(input.id) === identifier ||
+  input.key === identifier ||
+  input.title === identifier;
+
 export function addLog(message, type = 'info') {
   const timestamp = new Date().toLocaleTimeString()
   logMessages.update((currentMessages) => {
@@ -47,18 +52,14 @@ export async function fetchAllInputs() {
   }
 }
 
-// NEW: This function combines sending a command with immediately refreshing the data.
-// This is the implementation of your idea.
 export function sendCommandAndRefresh(command) {
   sendCommand(command);
-  // We add a small delay to give vMix a moment to process the command before we ask for the new XML.
   setTimeout(() => {
     fetchAllInputs();
-  }, 100); // 100ms delay
+  }, 100);
 }
 
 export async function queryVmixXpath(xpath) {
-  // This function remains unchanged
   if (!window.electronAPI) {
     addLog('ERROR: electronAPI is not available.', 'error')
     return null
@@ -85,11 +86,6 @@ export function initializeVmixListener() {
       const identifier = parts[3]
       const state = parts.length > 4 ? parts[4] : undefined
 
-      const isTargetInput = (input) =>
-        String(input.id) === identifier ||
-        input.key === identifier ||
-        input.title === identifier;
-
       switch (activator) {
         case 'Input':
           programInput.set(state === '1' ? parseInt(identifier, 10) : 0)
@@ -99,10 +95,9 @@ export function initializeVmixListener() {
           previewInput.set(state === '1' ? parseInt(identifier, 10) : 0)
           break
 
-        // We will still listen for Play/Pause state as it's very responsive.
         case 'InputPlaying':
           playingInputs.update((currentSet) => {
-            const targetInput = get(inputs).find(isTargetInput);
+            const targetInput = get(inputs).find(input => isTargetInput(input, identifier));
             if (targetInput) {
               state === '1'
                 ? currentSet.add(targetInput.id)
@@ -111,15 +106,41 @@ export function initializeVmixListener() {
             return new Set(currentSet);
           });
           break
+          
+        case 'InputAudio':
+          inputs.update((allInputs) =>
+            allInputs.map(input => 
+              isTargetInput(input, identifier) ? { ...input, muted: state === '0' } : input
+            )
+          );
+          break
+
+        // NEW: Re-added the listener for individual input volume
+        case 'InputVolume':
+          inputs.update((allInputs) =>
+            allInputs.map(input =>
+              isTargetInput(input, identifier) ? { ...input, volume: Math.round(parseFloat(state) ** 0.25 * 100) } : input
+            )
+          );
+          break
         
-        // We no longer need to listen for SelectedIndex, Audio, or Volume,
-        // as the full refresh will catch these changes. This simplifies our listener.
+        case 'InputSelectedIndex':
+          inputs.update((allInputs) =>
+            allInputs.map(input =>
+              isTargetInput(input, identifier) ? { ...input, selectedIndex: parseInt(state, 10) } : input
+            )
+          );
+          break
 
         case 'Overlay1':
           overlay1ActiveInput.set(state === '1' ? parseInt(identifier, 10) : 0)
           break
         case 'MasterAudio':
           isMasterAudioMuted.set(identifier === '0')
+          break
+        case 'MasterVolume':
+           // This is the logic we are emulating for InputVolume
+          masterVolume.set(Math.round(parseFloat(identifier) ** 0.25 * 100))
           break
       }
     })

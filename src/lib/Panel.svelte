@@ -148,9 +148,7 @@
   class:minimized={state?.min}
   class:selected={$selectedPanelIds.has(id)}
   bind:this={panelElement}
-  style="left: {state?.x ?? 0}px; top: {state?.y ??
-    0}px; width: {state?.width ?? 200}px; height: {state?.height ??
-    150}px; z-index: {state?.z ?? 1};"
+  style="left: {state?.x ?? 0}px; top: {state?.y ?? 0}px; width: {state?.width ?? 200}px; height: {state?.height ?? 150}px; z-index: {state?.z ?? 1};"
   role="dialog"
   aria-labelledby={titleId}
 >
@@ -219,9 +217,11 @@
   }
   .panel-content {
     flex-grow: 1;
-    padding: 15px;
-    overflow: auto;
+    /* UPDATED: Padding removed from here. The component inside will handle its own padding. */
+    overflow: hidden;
     background-color: #2a2a2e;
+    display: flex;
+    flex-direction: column;
   }
   .resize-handle {
     position: absolute;
