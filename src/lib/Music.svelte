@@ -2,14 +2,12 @@
   import { tick } from 'svelte';
   import { derived } from 'svelte/store';
   import { inputs, playingInputs, inputMappings } from './stores.js';
-  import { sendCommand } from './vmix.js';
+  import { sendCommandAndRefresh } from './vmix.js';
   import ListTrackList from './ListTrackList.svelte';
   import ListTransportControls from './ListTransportControls.svelte';
 
-  // --- NEW: Local state for UI-cued item ---
-  let cuedByUI = -1;
+  let uiCuedIndex = -1;
 
-  // --- Reactive State ---
   const targetInputName = derived(inputMappings, ($mappings) => $mappings.music);
   const musicInput = derived(
     [inputs, targetInputName],
@@ -22,15 +20,12 @@
   $: isPlaying = $musicInput && $playingInputs.has($musicInput.id);
   $: isMuted = $musicInput?.muted;
   $: vmixSelectedIndex = $musicInput?.selectedIndex ? $musicInput.selectedIndex - 1 : -1;
+
   $: nowPlayingName = (() => {
-    // If the UI has cued an item, but vMix hasn't updated yet, show "Paused".
-    if (cuedByUI !== -1 && cuedByUI !== vmixSelectedIndex) return "Paused";
-    
-    if (!$musicInput || !$musicInput.list?.[vmixSelectedIndex]) return 'Paused';
+    if (!$musicInput || !$musicInput.list?.[vmixSelectedIndex]) return '';
     return $musicInput.list[vmixSelectedIndex].name;
   })();
 
-  // --- Scrolling Text Logic ---
   let wrapperElement, textElement, needsScrolling = false, isAnimationPaused = false;
   $: {
     if (isPlaying && nowPlayingName) {
@@ -54,42 +49,63 @@
     if (needsScrolling) isAnimationPaused = !isAnimationPaused;
   }
   
-  // --- NEW: Main logic for click-to-select, click-again-to-play ---
   function handleTrackClick(event) {
     if (!$musicInput) return;
     const clickedIndex = event.detail;
 
-    if (cuedByUI === clickedIndex) {
-      // --- SECOND CLICK: Play the cued item ---
-      // The item is already selected in vMix from the first click, so we just send "Play".
-      // The "Play" command acts on the currently selected index.
-      sendCommand(`FUNCTION Play Input=${$musicInput.key}`);
-      cuedByUI = -1; // Reset the UI cue
+    if (isPlaying) {
+      uiCuedIndex = clickedIndex;
     } else {
-      // --- FIRST CLICK: Select the item (cue it) ---
+      uiCuedIndex = clickedIndex;
       const itemNumber = clickedIndex + 1;
-      sendCommand(`FUNCTION SelectIndex Input=${$musicInput.key}&Value=${itemNumber}`);
-      cuedByUI = clickedIndex;
-
-      // OPTIMISTIC UPDATE: To fix the "Now Playing" title getting stuck,
-      // we'll update our local store immediately. The listener will eventually
-      // send the same data, but this makes the UI feel instant.
-      inputs.update(all => {
-          const myInput = all.find(i => i.id === $musicInput.id);
-          if (myInput) {
-              myInput.selectedIndex = itemNumber;
-          }
-          return all;
-      });
+      sendCommandAndRefresh(`FUNCTION SelectIndex Input=${$musicInput.key}&Value=${itemNumber}`);
     }
   }
 
+  function handleTrackDoubleClick(event) {
+    if (!$musicInput) return;
+    const clickedIndex = event.detail;
+    const itemNumber = clickedIndex + 1;
+    sendCommandAndRefresh(`FUNCTION SelectIndex Input=${$musicInput.key}&Value=${itemNumber}`);
+    setTimeout(() => {
+      sendCommandAndRefresh(`FUNCTION Play Input=${$musicInput.key}`);
+    }, 50);
+    uiCuedIndex = -1;
+  }
+
+  // --- UPDATED: The final, correct transport logic ---
   function handleTransportCommand(event) {
     if (!$musicInput) return;
     const command = event.detail;
-    sendCommand(`FUNCTION ${command} Input=${$musicInput.key}`);
-    // When using transport, clear the UI cue
-    cuedByUI = -1;
+
+    // The only command with special logic is Play/Pause
+    if (command === 'PlayPause') {
+      if (isPlaying) {
+        // CONTEXT 1: A track is currently playing.
+        // The button is a simple toggle and IGNORES the uiCuedIndex for safety.
+        sendCommandAndRefresh(`FUNCTION PlayPause Input=${$musicInput.key}`);
+      } else {
+        // CONTEXT 2: Nothing is playing.
+        // Check if the user has visually cued a track.
+        if (uiCuedIndex !== -1) {
+          // A track is cued, so play that one.
+          const itemNumber = uiCuedIndex + 1;
+          sendCommandAndRefresh(`FUNCTION SelectIndex Input=${$musicInput.key}&Value=${itemNumber}`);
+          setTimeout(() => {
+            sendCommandAndRefresh(`FUNCTION Play Input=${$musicInput.key}`);
+          }, 50);
+        } else {
+          // Nothing is visually cued, so just toggle play on whatever vMix has selected.
+          sendCommandAndRefresh(`FUNCTION PlayPause Input=${$musicInput.key}`);
+        }
+      }
+    } else {
+      // For all other commands (NextItem, Restart, etc.), the behavior is always the same.
+      sendCommandAndRefresh(`FUNCTION ${command} Input=${$musicInput.key}`);
+    }
+    
+    // Any transport action clears the visual cue.
+    uiCuedIndex = -1;
   }
 </script>
 
@@ -98,13 +114,13 @@
     <button
       type="button"
       class="now-playing-container"
-      title={isPlaying ? nowPlayingName : 'Click to toggle scroll'}
+      title={isPlaying ? nowPlayingName : 'Paused'}
       on:click={toggleAnimation}
     >
       <div class="now-playing-text-wrapper" bind:this={wrapperElement}>
         <span
           class="now-playing-text"
-          class:scrolling={needsScrolling && !isAnimationPaused}
+          class:scrolling={isPlaying && needsScrolling && !isAnimationPaused}
           bind:this={textElement}
         >
           {isPlaying ? nowPlayingName : 'Paused'}
@@ -121,7 +137,7 @@
       <button
         class="control-btn mute-btn"
         class:muted={isMuted}
-        on:click={() => sendCommand(`FUNCTION Audio Input=${$musicInput.key}`)}
+        on:click={() => sendCommandAndRefresh(`FUNCTION Audio Input=${$musicInput.key}`)}
         title="Toggle Mute"
       >
         {#if isMuted}
@@ -136,9 +152,10 @@
       <ListTrackList
         listInput={$musicInput}
         {isPlaying}
-        cuedIndex={cuedByUI}
+        uiCuedIndex={uiCuedIndex}
         listType="music"
         on:trackClick={handleTrackClick}
+        on:trackDblClick={handleTrackDoubleClick}
       />
     </div>
 

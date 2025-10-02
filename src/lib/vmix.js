@@ -47,7 +47,18 @@ export async function fetchAllInputs() {
   }
 }
 
+// NEW: This function combines sending a command with immediately refreshing the data.
+// This is the implementation of your idea.
+export function sendCommandAndRefresh(command) {
+  sendCommand(command);
+  // We add a small delay to give vMix a moment to process the command before we ask for the new XML.
+  setTimeout(() => {
+    fetchAllInputs();
+  }, 100); // 100ms delay
+}
+
 export async function queryVmixXpath(xpath) {
+  // This function remains unchanged
   if (!window.electronAPI) {
     addLog('ERROR: electronAPI is not available.', 'error')
     return null
@@ -71,70 +82,44 @@ export function initializeVmixListener() {
       if (parts[0] !== 'ACTS' || parts[1] !== 'OK') return
 
       const activator = parts[2]
-      const value = parts[3]
+      const identifier = parts[3]
       const state = parts.length > 4 ? parts[4] : undefined
+
+      const isTargetInput = (input) =>
+        String(input.id) === identifier ||
+        input.key === identifier ||
+        input.title === identifier;
 
       switch (activator) {
         case 'Input':
-          programInput.set(state === '1' ? parseInt(value, 10) : 0)
+          programInput.set(state === '1' ? parseInt(identifier, 10) : 0)
           break
 
         case 'InputPreview':
-          previewInput.set(state === '1' ? parseInt(value, 10) : 0)
+          previewInput.set(state === '1' ? parseInt(identifier, 10) : 0)
           break
 
+        // We will still listen for Play/Pause state as it's very responsive.
         case 'InputPlaying':
           playingInputs.update((currentSet) => {
-            const inputNum = parseInt(value, 10)
-            state === '1'
-              ? currentSet.add(inputNum)
-              : currentSet.delete(inputNum)
-            return new Set(currentSet)
-          })
-          break
-          
-        case 'InputAudio':
-          inputs.update((currentInputs) => {
-            const inputNum = parseInt(value, 10)
-            const targetInput = currentInputs.find((i) => i.id === inputNum)
+            const targetInput = get(inputs).find(isTargetInput);
             if (targetInput) {
-              targetInput.muted = state === '0'
+              state === '1'
+                ? currentSet.add(targetInput.id)
+                : currentSet.delete(targetInput.id);
             }
-            return currentInputs
-          })
-          break
-
-        case 'InputVolume':
-          inputs.update((allInputs) => {
-            const inputNum = parseInt(value, 10)
-            const targetInput = allInputs.find((i) => i.id === inputNum)
-            if (targetInput) {
-              targetInput.volume = Math.round(parseFloat(state) ** 0.25 * 100)
-            }
-            return allInputs
-          })
+            return new Set(currentSet);
+          });
           break
         
-        // NEW: Handles when the selected item in a list changes
-        case 'InputSelectedIndex':
-          inputs.update((allInputs) => {
-            const inputNum = parseInt(value, 10)
-            const targetInput = allInputs.find((i) => i.id === inputNum)
-            if (targetInput) {
-              targetInput.selectedIndex = parseInt(state, 10)
-            }
-            return allInputs
-          })
-          break
+        // We no longer need to listen for SelectedIndex, Audio, or Volume,
+        // as the full refresh will catch these changes. This simplifies our listener.
 
         case 'Overlay1':
-          overlay1ActiveInput.set(state === '1' ? parseInt(value, 10) : 0)
+          overlay1ActiveInput.set(state === '1' ? parseInt(identifier, 10) : 0)
           break
         case 'MasterAudio':
-          isMasterAudioMuted.set(value === '0')
-          break
-        case 'MasterVolume':
-          masterVolume.set(Math.round(parseFloat(value) ** 0.25 * 100))
+          isMasterAudioMuted.set(identifier === '0')
           break
       }
     })
