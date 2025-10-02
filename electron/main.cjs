@@ -1,3 +1,5 @@
+// electron/main.cjs
+
 const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
 const { XMLParser } = require('fast-xml-parser')
@@ -70,8 +72,9 @@ function createWindow() {
           state: input.state,
           muted: String(input.muted).toLowerCase() === 'true',
           selectedIndex: parseInt(input.selectedIndex, 10),
-          // FIXED: Correctly handles a volume attribute of 0.
           volume: input.volume !== undefined ? parseFloat(input.volume) : 100,
+          // THE FIX IS HERE: We are now adding the parsed 'items' array to the final object.
+          list: items,
         }
       })
     } catch (error) {

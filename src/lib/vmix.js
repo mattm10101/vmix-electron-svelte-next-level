@@ -1,3 +1,5 @@
+// src/lib/vmix.js
+
 import { get } from 'svelte/store'
 import {
   inputs,
@@ -90,6 +92,7 @@ export function initializeVmixListener() {
             return new Set(currentSet)
           })
           break
+          
         case 'InputAudio':
           inputs.update((currentInputs) => {
             const inputNum = parseInt(value, 10)
@@ -101,14 +104,24 @@ export function initializeVmixListener() {
           })
           break
 
-        // NEW: Handle live volume changes for any input
         case 'InputVolume':
           inputs.update((allInputs) => {
             const inputNum = parseInt(value, 10)
             const targetInput = allInputs.find((i) => i.id === inputNum)
             if (targetInput) {
-              // Apply the same curve as MasterVolume for consistency
               targetInput.volume = Math.round(parseFloat(state) ** 0.25 * 100)
+            }
+            return allInputs
+          })
+          break
+        
+        // NEW: Handles when the selected item in a list changes
+        case 'InputSelectedIndex':
+          inputs.update((allInputs) => {
+            const inputNum = parseInt(value, 10)
+            const targetInput = allInputs.find((i) => i.id === inputNum)
+            if (targetInput) {
+              targetInput.selectedIndex = parseInt(state, 10)
             }
             return allInputs
           })

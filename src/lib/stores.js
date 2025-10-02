@@ -1,3 +1,5 @@
+// src/lib/stores.js
+
 import { writable, derived, get } from 'svelte/store'
 import { persistentStore } from './persistentStore.js'
 import { defaultLayout } from './defaultLayout.js'
@@ -13,6 +15,16 @@ export const overlay1ActiveInput = writable(0)
 
 // --- UI & Application State ---
 export const logMessages = writable([])
+
+// NEW: Central store for user-configurable input names/prefixes.
+// This is the core of the new flexible system.
+export const inputMappings = persistentStore('inputMappings', {
+  music: 'LIST - MUSIC',
+  videos: 'LIST - VIDEOS',
+  photos: 'PHOTOS - ',
+  lowerThirds: 'L3 - ',
+})
+
 export const savedDefaultLayout = persistentStore('savedDefaultLayout', null)
 export const panelStates = persistentStore(
   'panelStates',
@@ -54,8 +66,14 @@ export const modalStore = writable({
 })
 
 // --- Derived Stores ---
-export const l3Inputs = derived(inputs, ($inputs) =>
-  $inputs.filter((input) => input.title.startsWith('L3 -'))
+
+// UPDATED: This store now reactively finds L3s based on the user's mapping.
+export const l3Inputs = derived(
+  [inputs, inputMappings],
+  ([$inputs, $mappings]) => {
+    if (!$mappings.lowerThirds) return []
+    return $inputs.filter((input) => input.title.startsWith($mappings.lowerThirds))
+  }
 )
 
 // Helper function to show the modal
