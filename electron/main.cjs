@@ -8,11 +8,8 @@ const VmixConnector = require('./VmixConnector.cjs')
 const VMIX_HOST = '127.0.0.1'
 const VMIX_TCP_PORT = 8099
 
-let mainWindow; // Make mainWindow accessible to update the menu
+let mainWindow;
 
-// --- NEW: Define the application menu structure ---
-
-// List of panels that will have a checkbox in the "View" menu
 const toggleablePanels = [
     { id: 'inputs', label: 'Inputs' },
     { id: 'transitions', label: 'Transitions' },
@@ -31,7 +28,20 @@ const toggleablePanels = [
 const menuTemplate = [
   {
     label: 'File',
-    submenu: [{ role: 'quit' }]
+    submenu: [
+      // NEW: Added a menu item to open our preferences/options modal
+      {
+        label: 'Preferences...',
+        accelerator: 'CmdOrCtrl+,', // Standard keyboard shortcut
+        click() {
+          if (mainWindow) {
+            mainWindow.webContents.send('open-options-modal');
+          }
+        }
+      },
+      { type: 'separator' },
+      { role: 'quit' }
+    ]
   },
   {
     label: 'View',
@@ -39,9 +49,8 @@ const menuTemplate = [
       id: panel.id,
       label: `Show ${panel.label} Panel`,
       type: 'checkbox',
-      checked: true, // Panels are visible by default
+      checked: true,
       click(menuItem) {
-        // When clicked, send a message to the Svelte app
         if (mainWindow) {
           mainWindow.webContents.send('toggle-panel-visibility', menuItem.id);
         }
@@ -57,18 +66,15 @@ const menuTemplate = [
   }
 ];
 
-// --- NEW: Listen for state updates from the Svelte app ---
 ipcMain.on('update-menu-state', (event, panelStates) => {
   const viewMenu = menuTemplate.find(m => m.label === 'View');
   if (viewMenu) {
     viewMenu.submenu.forEach(submenuItem => {
       const panelId = submenuItem.id;
       if (panelStates[panelId]) {
-        // Update the 'checked' status based on the state from Svelte
         submenuItem.checked = panelStates[panelId].visible;
       }
     });
-    // Rebuild the menu with the updated checkbox states
     const menu = Menu.buildFromTemplate(menuTemplate);
     Menu.setApplicationMenu(menu);
   }
@@ -149,7 +155,6 @@ function createWindow() {
     }
   })
 
-  // Build and set the application menu from our template
   const menu = Menu.buildFromTemplate(menuTemplate);
   Menu.setApplicationMenu(menu);
 

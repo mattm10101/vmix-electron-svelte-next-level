@@ -15,16 +15,12 @@ export const overlay1ActiveInput = writable(0)
 
 // --- UI & Application State ---
 export const logMessages = writable([])
-
-// NEW: Central store for user-configurable input names/prefixes.
-// This is the core of the new flexible system.
 export const inputMappings = persistentStore('inputMappings', {
   music: 'LIST - MUSIC',
   videos: 'LIST - VIDEOS',
   photos: 'PHOTOS - ',
   lowerThirds: 'L3 - ',
 })
-
 export const savedDefaultLayout = persistentStore('savedDefaultLayout', null)
 export const panelStates = persistentStore(
   'panelStates',
@@ -64,10 +60,11 @@ export const modalStore = writable({
   message: '',
   onConfirm: () => {},
 })
+// NEW: A store to control the visibility of our new Preferences modal
+export const optionsModalOpen = writable(false);
+
 
 // --- Derived Stores ---
-
-// UPDATED: This store now reactively finds L3s based on the user's mapping.
 export const l3Inputs = derived(
   [inputs, inputMappings],
   ([$inputs, $mappings]) => {

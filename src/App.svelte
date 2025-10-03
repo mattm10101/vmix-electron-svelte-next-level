@@ -4,7 +4,8 @@
   import {
     panelStates, inputs, logMessages, programInput, previewInput,
     layoutPresets, visibilityOptions, marquee, selectedPanelIds,
-    scriptManager, gridOptions, savedDefaultLayout, inputMappings
+    scriptManager, gridOptions, savedDefaultLayout, inputMappings,
+    optionsModalOpen // Import the new store
   } from './lib/stores.js'
   import { defaultLayout } from './lib/defaultLayout.js'
   import { sendCommand, fetchAllInputs, initializeVmixListener, addLog } from './lib/vmix.js'
@@ -25,6 +26,8 @@
   import Options from './lib/Options.svelte'
   import BackgroundGrid from './lib/BackgroundGrid.svelte'
   import Modal from './lib/Modal.svelte'
+  // Import the new modal component
+  import OptionsModal from './lib/OptionsModal.svelte'
   
   const filteredInputs = derived(
     [inputs, visibilityOptions, inputMappings],
@@ -52,6 +55,11 @@
           }
         };
       });
+    });
+
+    // NEW: Listen for the menu click and open the modal
+    window.electronAPI.onOpenOptionsModal(() => {
+      optionsModalOpen.set(true);
     });
 
     return () => window.removeEventListener('mousedown', handleWindowMouseDown);
@@ -177,6 +185,9 @@
 
 <div class="h-full w-full bg-lab-metal font-sci text-neon-teal relative overflow-hidden">
   <Modal />
+  {#if $optionsModalOpen}
+    <OptionsModal />
+  {/if}
   <BackgroundGrid />
   <MarqueeBox />
 
