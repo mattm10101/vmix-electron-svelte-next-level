@@ -35,20 +35,25 @@
     cursor: pointer;
     transition: all 0.2s ease-out;
   }
-  .input-btn:hover {
+
+  /* UPDATED: Hover effect now only applies to non-active, non-preview buttons */
+  .input-btn:not(.program):not(.preview):hover {
     border-color: #14ffec;
     background-color: #3f3f46;
   }
+
   .program {
-    background-color: #f44747;
-    border-color: #ff8a8a;
+    background-color: #2f855a; /* Green */
+    border-color: #38a169;
     color: white;
   }
+  
   .preview {
-    background-color: #34d399;
-    border-color: #6ee7b7;
+    background-color: #dd6b20; /* Orange */
+    border-color: #ed8936;
     color: white;
   }
+
   .input-number {
     font-size: 1.75em;
     font-weight: bold;

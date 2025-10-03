@@ -65,7 +65,7 @@ export async function queryVmixXpath(xpath) {
     return null
   }
   try {
-    const value = await window.electronAPI.queryXpath(xpath)
+    const value = await window.electronAPI.queryVmixXpath(xpath)
     addLog(`XPATH RECV: ${xpath} = ${value}`, 'received')
     return value
   } catch (e) {
@@ -99,11 +99,15 @@ export function initializeVmixListener() {
           playingInputs.update((currentSet) => {
             const targetInput = get(inputs).find(input => isTargetInput(input, identifier));
             if (targetInput) {
-              state === '1'
-                ? currentSet.add(targetInput.id)
-                : currentSet.delete(targetInput.id);
+              const newSet = new Set(currentSet);
+              if (state === '1') {
+                newSet.add(targetInput.id);
+              } else {
+                newSet.delete(targetInput.id);
+              }
+              return newSet;
             }
-            return new Set(currentSet);
+            return currentSet;
           });
           break
           
@@ -115,7 +119,6 @@ export function initializeVmixListener() {
           );
           break
 
-        // NEW: Re-added the listener for individual input volume
         case 'InputVolume':
           inputs.update((allInputs) =>
             allInputs.map(input =>
@@ -139,7 +142,6 @@ export function initializeVmixListener() {
           isMasterAudioMuted.set(identifier === '0')
           break
         case 'MasterVolume':
-           // This is the logic we are emulating for InputVolume
           masterVolume.set(Math.round(parseFloat(identifier) ** 0.25 * 100))
           break
       }

@@ -99,16 +99,15 @@
     uiCuedIndex = -1;
   }
 
-  // --- UPDATED: Handler now sends the correct 0-100 value ---
   function handleVolumeChange(event) {
     if (!$musicInput) return;
     const uiVolume = event.target.value;
 
-    inputs.update((all) => {
-      const myInput = all.find((i) => i.id === $musicInput.id);
-      if (myInput) myInput.volume = uiVolume;
-      return all;
-    });
+    inputs.update((allInputs) =>
+      allInputs.map(input =>
+        input.id === $musicInput.id ? { ...input, volume: uiVolume } : input
+      )
+    );
 
     if (throttleTimer) return;
 
@@ -116,7 +115,6 @@
       throttleTimer = null;
     }, 50);
 
-    // REMOVED the incorrect calculation. We now send the direct slider value.
     sendCommand(`FUNCTION SetVolume Input=${$musicInput.key}&Value=${uiVolume}`);
   }
 </script>
