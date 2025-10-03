@@ -1,145 +1,143 @@
 <script>
-  import { onMount } from 'svelte'
-  import { panelStates, selectedPanelIds, gridOptions } from './stores.js'
+  import { onMount } from 'svelte';
+  import { panelStates, selectedPanelIds, gridOptions } from './stores.js';
 
-  export let id
-  export let title
-  export let defaultState
+  export let id;
+  export let title;
+  export let defaultState;
 
-  $: state = $panelStates[id]
-  const titleId = `panel-title-${id}`
+  $: state = $panelStates[id];
+  const titleId = `panel-title-${id}`;
 
-  let panelElement
-  let initialDragPositions = new Map()
+  let panelElement;
+  let initialDragPositions = new Map();
 
   onMount(() => {
+    // This is the original initialization logic
     if (!state && defaultState) {
       panelStates.update((allStates) => {
-        allStates[id] = { ...defaultState, title: title }
-        return allStates
-      })
+        allStates[id] = { ...defaultState, title: title, visible: true, min: false };
+        return allStates;
+      });
     }
 
     function onMouseDown(e) {
-      const resizeHandle = e.target.closest('.resize-handle')
-      const header = e.target.closest('.panel-header')
-      const control = e.target.closest('.panel-control')
+      const resizeHandle = e.target.closest('.resize-handle');
+      const header = e.target.closest('.panel-header');
+      const control = e.target.closest('.panel-control');
 
-      if (control) return
+      if (control) return;
 
-      window.getSelection()?.removeAllRanges()
-      bringToFront()
+      window.getSelection()?.removeAllRanges();
+      bringToFront();
 
       if (resizeHandle) {
-        isResizing = true
+        isResizing = true;
       } else if (header) {
-        document.body.classList.add('no-select')
-        isDragging = true
-        startMouseX = e.clientX
-        startMouseY = e.clientY
+        document.body.classList.add('no-select');
+        isDragging = true;
+        startMouseX = e.clientX;
+        startMouseY = e.clientY;
 
         if (!$selectedPanelIds.has(id)) {
-          selectedPanelIds.set(new Set([id]))
+          selectedPanelIds.set(new Set([id]));
         }
 
-        initialDragPositions.clear()
+        initialDragPositions.clear();
         $selectedPanelIds.forEach((panelId) => {
-          initialDragPositions.set(panelId, { ...$panelStates[panelId] })
-        })
+          initialDragPositions.set(panelId, { ...$panelStates[panelId] });
+        });
       } else {
-        return
+        return;
       }
 
-      document.addEventListener('mousemove', onMouseMove)
-      document.addEventListener('mouseup', onMouseUp, { once: true })
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp, { once: true });
     }
 
-    let isDragging = false
-    let isResizing = false
-    let startMouseX, startMouseY
+    let isDragging = false;
+    let isResizing = false;
+    let startMouseX, startMouseY;
 
     function onMouseMove(e) {
       if (isDragging) {
-        const dx = e.clientX - startMouseX
-        const dy = e.clientY - startMouseY
+        const dx = e.clientX - startMouseX;
+        const dy = e.clientY - startMouseY;
 
         panelStates.update((allStates) => {
           $selectedPanelIds.forEach((panelId) => {
-            const initialPos = initialDragPositions.get(panelId)
+            const initialPos = initialDragPositions.get(panelId);
             if (initialPos && allStates[panelId]) {
-              const newX = initialPos.x + dx
-              const newY = initialPos.y + dy
-
+              const newX = initialPos.x + dx;
+              const newY = initialPos.y + dy;
+              
               if ($gridOptions.snapToGrid) {
-                const snapSize = $gridOptions.snapSize
-                allStates[panelId].x = Math.round(newX / snapSize) * snapSize
-                allStates[panelId].y = Math.round(newY / snapSize) * snapSize
+                const snapSize = $gridOptions.snapSize;
+                allStates[panelId].x = Math.round(newX / snapSize) * snapSize;
+                allStates[panelId].y = Math.round(newY / snapSize) * snapSize;
               } else {
-                allStates[panelId].x = newX
-                allStates[panelId].y = newY
+                allStates[panelId].x = newX;
+                allStates[panelId].y = newY;
               }
             }
-          })
-          return allStates
-        })
+          });
+          return allStates;
+        });
       } else if (isResizing) {
         panelStates.update((allStates) => {
           if (allStates[id]) {
-            const newWidth = Math.max(200, e.clientX - state.x)
-            const newHeight = Math.max(150, e.clientY - state.y)
+            const newWidth = Math.max(200, e.clientX - state.x);
+            const newHeight = Math.max(150, e.clientY - state.y);
 
             if ($gridOptions.snapResize) {
-              const snapSize = $gridOptions.snapSize
-              allStates[id].width = Math.round(newWidth / snapSize) * snapSize
-              allStates[id].height = Math.round(newHeight / snapSize) * snapSize
+              const snapSize = $gridOptions.snapSize;
+              allStates[id].width = Math.round(newWidth / snapSize) * snapSize;
+              allStates[id].height = Math.round(newHeight / snapSize) * snapSize;
             } else {
-              allStates[id].width = newWidth
-              allStates[id].height = newHeight
+              allStates[id].width = newWidth;
+              allStates[id].height = newHeight;
             }
           }
-          return allStates
-        })
+          return allStates;
+        });
       }
     }
 
     function onMouseUp() {
       if (isDragging) {
-        document.body.classList.remove('no-select')
+        document.body.classList.remove('no-select');
       }
-      isDragging = false
-      isResizing = false
-      document.removeEventListener('mousemove', onMouseMove)
+      isDragging = false;
+      isResizing = false;
+      document.removeEventListener('mousemove', onMouseMove);
     }
 
-    panelElement.addEventListener('mousedown', onMouseDown)
+    panelElement.addEventListener('mousedown', onMouseDown);
 
     return () => {
-      panelElement.removeEventListener('mousedown', onMouseDown)
-      document.removeEventListener('mousemove', onMouseMove)
-      document.removeEventListener('mouseup', onMouseUp)
-    }
-  })
+      panelElement.removeEventListener('mousedown', onMouseDown);
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+  });
 
   function bringToFront() {
-    const maxZ = Math.max(
-      0,
-      ...Object.values($panelStates).map((p) => p.z || 0)
-    )
+    const maxZ = Math.max(0, ...Object.values($panelStates).map((p) => p.z || 0));
     panelStates.update((allStates) => {
       if (allStates[id]) {
-        allStates[id].z = maxZ + 1
+        allStates[id].z = maxZ + 1;
       }
-      return allStates
-    })
+      return allStates;
+    });
   }
 
   function toggleMinimized() {
     panelStates.update((allStates) => {
       if (allStates[id]) {
-        allStates[id].min = !allStates[id].min
+        allStates[id].min = !allStates[id].min;
       }
-      return allStates
-    })
+      return allStates;
+    });
   }
 </script>
 
@@ -217,8 +215,7 @@
   }
   .panel-content {
     flex-grow: 1;
-    /* UPDATED: Padding removed from here. The component inside will handle its own padding. */
-    overflow: hidden;
+    overflow: auto;
     background-color: #2a2a2e;
     display: flex;
     flex-direction: column;
