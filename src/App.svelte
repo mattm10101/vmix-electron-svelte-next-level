@@ -249,7 +249,7 @@
         {#if $inputs.length > 0}
           <div class="input-grid" class:hide-numbers={!$visibilityOptions.showNumbers} style="--grid-gap: {$gridOptions.gapSize}px;">
             {#each $filteredInputs as input (input.id)}
-              <InputButton id={input.id} name={input.title} number={input.id} isProgram={input.id === $programInput} isPreview={$visibilityOptions.showPreviewLed && input.id === $previewInput} onCommand={sendCommand}/>
+              <InputButton id={input.id} name={input.shortTitle} number={input.id} isProgram={input.id === $programInput} isPreview={$visibilityOptions.showPreviewLed && input.id === $previewInput} onCommand={sendCommand}/>
             {/each}
           </div>
         {:else}
@@ -270,7 +270,6 @@
 </div>
 
 <style>
-  /* NEW: Style for the padding wrapper */
   .inputs-panel-content {
     padding: 15px;
     height: 100%;

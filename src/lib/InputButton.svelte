@@ -1,6 +1,6 @@
 <script>
   export let id
-  export let name
+  export let name // This is the property we'll use for the main display
   export let number
   export let isProgram = false
   export let isPreview = false
@@ -14,8 +14,7 @@
   on:click={() => onCommand(`FUNCTION PreviewInput Input=${id}`)}
 >
   <span class="input-number">{number}</span>
-  <span class="input-name">{name}</span>
-</button>
+  <span class="input-name">{name}</span> </button>
 
 <style>
   .input-btn {
@@ -41,14 +40,12 @@
     background-color: #3f3f46;
   }
 
-  /* UPDATED: Program (Active) is now a brighter Green to match vMix */
   .program {
     background-color: #27ae60;
     border-color: #229954;
     color: white;
   }
   
-  /* UPDATED: Preview is now a brighter Orange to match vMix */
   .preview {
     background-color: #f39c12;
     border-color: #d35400;
