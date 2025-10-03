@@ -245,18 +245,20 @@
       <div slot="header-controls">
         <button class="panel-control" on:click={fetchAllInputs} title="Refresh Inputs">⟳</button>
       </div>
-      {#if $inputs.length > 0}
-        <div class="input-grid" class:hide-numbers={!$visibilityOptions.showNumbers} style="--grid-gap: {$gridOptions.gapSize}px;">
-          {#each $filteredInputs as input (input.id)}
-            <InputButton id={input.id} name={input.title} number={input.id} isProgram={input.id === $programInput} isPreview={$visibilityOptions.showPreviewLed && input.id === $previewInput} onCommand={sendCommand}/>
-          {/each}
-        </div>
-      {:else}
-        <div class="placeholder">
-          <p>No inputs found in vMix.</p>
-          <p class="subtext">Add inputs in vMix, then click the refresh icon.</p>
-        </div>
-      {/if}
+      <div class="inputs-panel-content">
+        {#if $inputs.length > 0}
+          <div class="input-grid" class:hide-numbers={!$visibilityOptions.showNumbers} style="--grid-gap: {$gridOptions.gapSize}px;">
+            {#each $filteredInputs as input (input.id)}
+              <InputButton id={input.id} name={input.title} number={input.id} isProgram={input.id === $programInput} isPreview={$visibilityOptions.showPreviewLed && input.id === $previewInput} onCommand={sendCommand}/>
+            {/each}
+          </div>
+        {:else}
+          <div class="placeholder">
+            <p>No inputs found in vMix.</p>
+            <p class="subtext">Add inputs in vMix, then click the refresh icon.</p>
+          </div>
+        {/if}
+      </div>
     </Panel>
   {/if}
 
@@ -268,6 +270,15 @@
 </div>
 
 <style>
+  /* NEW: Style for the padding wrapper */
+  .inputs-panel-content {
+    padding: 15px;
+    height: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  }
+  
   :global(.audio-controls) { display: flex; flex-direction: column; gap: 15px; height: 100%; justify-content: space-around; }
   :global(.placeholder) { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; text-align: center; color: #888; }
   :global(.placeholder .subtext) { font-size: 0.9em; margin-top: 8px; color: #666; }

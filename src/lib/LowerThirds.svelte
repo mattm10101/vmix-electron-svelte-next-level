@@ -1,18 +1,20 @@
 <script>
-  import { get } from 'svelte/store'
-  import { l3Inputs, overlay1ActiveInput } from './stores.js'
+  import { get } from 'svelte/store';
+  import { l3Inputs, overlay1ActiveInput, inputMappings } from './stores.js';
 
-  export let onCommand = (detail) => {}
+  export let onCommand = (detail) => {};
 
   function toggleOverlay(inputId) {
-    const currentlyActiveId = get(overlay1ActiveInput)
+    const currentlyActiveId = get(overlay1ActiveInput);
 
     if (currentlyActiveId === inputId) {
-      onCommand(`FUNCTION OverlayInput1Off Input=${inputId}`)
+      onCommand(`FUNCTION OverlayInput1Out`);
     } else {
-      onCommand(`FUNCTION OverlayInput1 Input=${inputId}`)
+      onCommand(`FUNCTION OverlayInput1In Input=${inputId}`);
     }
   }
+
+  $: l3Prefix = $inputMappings.lowerThirds || 'L3 - ';
 </script>
 
 <div class="l3-container">
@@ -24,11 +26,11 @@
         on:click={() => toggleOverlay(l3.id)}
         title={l3.title}
       >
-        {l3.title.replace('L3 - ', '')}
+        {l3.title.replace(l3Prefix, '')}
       </button>
     {/each}
   {:else}
-    <div class="no-l3s-message">No "L3 - " inputs found.</div>
+    <div class="no-l3s-message">No inputs matching the L3 prefix found.</div>
   {/if}
 </div>
 
@@ -39,6 +41,8 @@
     gap: 8px;
     height: 100%;
     overflow-y: auto;
+    /* UPDATED: Changed padding to apply to all sides for breathing room at the top */
+    padding: 15px;
   }
   .l3-btn {
     width: 100%;
@@ -53,26 +57,18 @@
     overflow: hidden;
     text-overflow: ellipsis;
     transition: all 0.2s ease-in-out;
+    flex-shrink: 0;
   }
   .l3-btn:hover:not(.active) {
     border-color: #888;
     background-color: #3f3f46;
   }
-
-  /* NEW: Advanced styling for the active button to match the image */
   .l3-btn.active {
-    /* A darker, richer gradient for better text readability */
     background: linear-gradient(to bottom, #1abd79, #179a63);
     color: white;
     font-weight: bold;
-
-    /* Creates the clean, 2px white inner border */
     box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.9);
-
-    /* Creates the soft outer neon glow */
     filter: drop-shadow(0 0 2px #67ffc7) drop-shadow(0 0 6px #67ffc7);
-
-    /* Make the original border transparent so it doesn't interfere */
     border-color: transparent;
   }
   .no-l3s-message {

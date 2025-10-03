@@ -35,22 +35,23 @@
     cursor: pointer;
     transition: all 0.2s ease-out;
   }
-
-  /* UPDATED: Hover effect now only applies to non-active, non-preview buttons */
+  
   .input-btn:not(.program):not(.preview):hover {
     border-color: #14ffec;
     background-color: #3f3f46;
   }
 
+  /* UPDATED: Program (Active) is now a brighter Green to match vMix */
   .program {
-    background-color: #2f855a; /* Green */
-    border-color: #38a169;
+    background-color: #27ae60;
+    border-color: #229954;
     color: white;
   }
   
+  /* UPDATED: Preview is now a brighter Orange to match vMix */
   .preview {
-    background-color: #dd6b20; /* Orange */
-    border-color: #ed8936;
+    background-color: #f39c12;
+    border-color: #d35400;
     color: white;
   }
 

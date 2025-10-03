@@ -1,7 +1,6 @@
 <script>
   import { derived } from 'svelte/store';
   import { inputs, playingInputs, inputMappings, programInput, previewInput, showModal } from './stores.js';
-  // UPDATED: We now control all refreshes manually for stability
   import { fetchAllInputs, sendCommand } from './vmix.js';
   import ListTransportControls from './ListTransportControls.svelte';
 
@@ -23,7 +22,6 @@
   $: isInPreview = $videoInput && $previewInput === $videoInput.id;
   $: isInProgram = $videoInput && $programInput === $videoInput.id;
   
-  // --- UPDATED with the stable refresh pattern ---
   function handleTrackClick(clickedIndex) {
     if (!$videoInput || isInProgram) return;
 
@@ -41,7 +39,6 @@
     }
   }
 
-  // --- UPDATED to prevent race conditions ---
   function handleTrackDoubleClick(clickedIndex) {
     if (!$videoInput || !isInProgram) return;
 
@@ -51,7 +48,9 @@
     showModal(`You are interrupting a live video. Jump to and play "${trackName}"?`, () => {
       sendCommand(`FUNCTION SelectIndex Input=${$videoInput.key}&Value=${itemNumber}`);
       sendCommand(`FUNCTION Play Input=${$videoInput.key}`);
-      setTimeout(() => fetchAllInputs(), 100);
+      setTimeout(() => {
+        fetchAllInputs();
+      }, 100);
     });
   }
   
@@ -77,17 +76,10 @@
     setTimeout(() => fetchAllInputs(), 100);
   }
 
-  // UPDATED with the immutable fix for stability
   function handleVolumeChange(event) {
     if (!$videoInput) return;
     const uiVolume = event.target.value;
-
-    inputs.update((allInputs) =>
-      allInputs.map(input =>
-        input.id === $videoInput.id ? { ...input, volume: uiVolume } : input
-      )
-    );
-
+    inputs.update((allInputs) => allInputs.map(input => input.id === $videoInput.id ? { ...input, volume: uiVolume } : input ));
     if (throttleTimer) return;
     throttleTimer = setTimeout(() => { throttleTimer = null; }, 50);
     sendCommand(`FUNCTION SetVolume Input=${$videoInput.key}&Value=${uiVolume}`);
@@ -96,16 +88,17 @@
 
 <div class="videos-container">
   {#if $videoInput}
-    <div class="status-display"
+    <div 
+      class="status-display"
       class:program={isInProgram}
       class:preview={isInPreview}
     >
       {#if isInProgram}
-        Videos Input is Active
+        Input is Active
       {:else if isInPreview}
-        Videos Input in Preview
+        Input in Preview
       {:else}
-        Videos Input not Loaded
+        Input not Loaded
       {/if}
     </div>
     

@@ -1,5 +1,5 @@
 <script>
-  export let onCommand = (detail) => {}
+  export let onCommand = (detail) => {};
 </script>
 
 <div class="grid-container">
@@ -15,6 +15,9 @@
     grid-template-columns: 1fr 1fr;
     gap: 10px;
     height: 100%;
+    /* UPDATED: Added padding for breathing room */
+    padding: 15px;
+    box-sizing: border-box; /* Ensures padding is included in the height calculation */
   }
   button {
     width: 100%;
