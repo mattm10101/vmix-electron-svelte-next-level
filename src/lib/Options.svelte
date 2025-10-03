@@ -1,73 +1,62 @@
 <script>
-  import { gridOptions, panelStates, savedDefaultLayout, inputMappings } from './stores.js'
-  import { get } from 'svelte/store'
+  import { gridOptions, inputMappings } from './stores.js';
 
   function setSnapSize(size) {
-    gridOptions.update((opts) => ({ ...opts, snapSize: size }))
+    gridOptions.update((opts) => ({ ...opts, snapSize: size }));
   }
 
   function toggleGrid() {
-    gridOptions.update((opts) => ({ ...opts, show: !opts.show }))
+    gridOptions.update((opts) => ({ ...opts, show: !opts.show }));
   }
 
   function toggleSnap() {
-    gridOptions.update((opts) => ({ ...opts, snapToGrid: !opts.snapToGrid }))
+    gridOptions.update((opts) => ({ ...opts, snapToGrid: !opts.snapToGrid }));
   }
 
   function toggleResizeSnap() {
-    gridOptions.update((opts) => ({ ...opts, snapResize: !opts.snapResize }))
-  }
-
-  function saveAsDefault() {
-    const currentLayout = get(panelStates)
-    savedDefaultLayout.set(currentLayout)
-    alert('Current layout saved as default!')
+    gridOptions.update((opts) => ({ ...opts, snapResize: !opts.snapResize }));
   }
 </script>
 
 <div class="options-container">
-  <div class="mappings-group">
-    <div class="mapping-item">
-      <label for="music-map">Music Player</label>
-      <input type="text" id="music-map" bind:value={$inputMappings.music} />
-    </div>
-    <div class="mapping-item">
-      <label for="videos-map">Videos Player</label>
-      <input type="text" id="videos-map" bind:value={$inputMappings.videos} />
-    </div>
-    <div class="mapping-item">
-      <label for="photos-map">Photos Prefix</label>
-      <input type="text" id="photos-map" bind:value={$inputMappings.photos} />
-    </div>
-    <div class="mapping-item">
-      <label for="l3-map">L3s Prefix</label>
-      <input type="text" id="l3-map" bind:value={$inputMappings.lowerThirds} />
-    </div>
+  <div class="option-item">
+    <label for="music-map">Music Player</label>
+    <input type="text" id="music-map" bind:value={$inputMappings.music} />
+  </div>
+  <div class="option-item">
+    <label for="videos-map">Videos Player</label>
+    <input type="text" id="videos-map" bind:value={$inputMappings.videos} />
+  </div>
+  <div class="option-item">
+    <label for="photos-map">Photos Player</label>
+    <input type="text" id="photos-map" bind:value={$inputMappings.photos} />
+  </div>
+  <div class="option-item">
+    <label for="l3-map">L3s Prefix</label>
+    <input type="text" id="l3-map" bind:value={$inputMappings.lowerThirds} />
   </div>
 
-  <div class="layout-actions">
-    <button class="action-btn save-btn" on:click={saveAsDefault}>Save Layout as Default</button>
-  </div>
-  
-  <div class="option-group">
+  <hr/>
+
+  <div class="option-item">
     <span class="label">Visual Grid</span>
     <button class="toggle-btn" class:active={$gridOptions.show} on:click={toggleGrid}>
       {$gridOptions.show ? 'On' : 'Off'}
     </button>
   </div>
-  <div class="option-group">
+  <div class="option-item">
     <span class="label">Drag Snap</span>
     <button class="toggle-btn" class:active={$gridOptions.snapToGrid} on:click={toggleSnap}>
       {$gridOptions.snapToGrid ? 'On' : 'Off'}
     </button>
   </div>
-  <div class="option-group">
+  <div class="option-item">
     <span class="label">Snap Resize</span>
     <button class="toggle-btn" class:active={$gridOptions.snapResize} on:click={toggleResizeSnap}>
       {$gridOptions.snapResize ? 'On' : 'Off'}
     </button>
   </div>
-  <div class="option-group">
+  <div class="option-item">
     <span class="label">Snap To</span>
     <div class="button-group">
       <button class:active={$gridOptions.snapSize === 2} on:click={() => setSnapSize(2)}>S</button>
@@ -79,102 +68,46 @@
 </div>
 
 <style>
-  .options-container {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
+  .options-container { 
+    display: flex; 
+    flex-direction: column; 
+    height: 100%; 
     gap: 10px;
+    overflow-y: auto;
+    padding: 15px;
+    box-sizing: border-box;
   }
-  /* NEW STYLES for the mapping section */
-  .mappings-group {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    background: #2a2a2e;
-    padding: 10px;
+  hr {
+    border-color: #3c3c3c;
+    width: 100%;
+    margin: 5px 0;
+  }
+  .option-item { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    background: #2a2a2e; 
+    padding: 12px; 
     border-radius: 5px;
+    flex-shrink: 0;
   }
-  .mapping-item {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+  .option-item label, .label { 
+    color: #ccc; 
+    font-weight: bold;
   }
-  .mapping-item label {
-    color: #ccc;
-    font-size: 0.8em;
-  }
-  .mapping-item input {
-    background: #1f1f23;
-    border: 1px solid #555;
-    color: #eee;
-    border-radius: 3px;
-    padding: 6px;
+  .option-item input { 
+    background: #1f1f23; 
+    border: 1px solid #555; 
+    color: #eee; 
+    border-radius: 3px; 
+    padding: 6px 8px; 
     font-family: inherit;
+    text-align: right;
+    width: 50%;
   }
-  .mapping-item input:focus {
-    outline: none;
-    border-color: #14ffec;
-  }
-  /* End of new styles */
-  .layout-actions {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-  .action-btn {
-    padding: 10px;
-    border-radius: 5px;
-    border: 1px solid #555;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .save-btn {
-    background-color: #2b6cb0;
-    color: white;
-  }
-  .save-btn:hover {
-    background-color: #3182ce;
-  }
-  .option-group {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #2a2a2e;
-    padding: 10px;
-    border-radius: 5px;
-  }
-  .label {
-    font-weight: bold;
-    color: #ccc;
-  }
-  .button-group {
-    display: flex;
-    gap: 5px;
-    background: #1f1f23;
-    border-radius: 5px;
-    padding: 4px;
-  }
-  .button-group button,
-  .toggle-btn {
-    background: #3f3f46;
-    border: 1px solid #555;
-    color: #eee;
-    padding: 6px 12px;
-    border-radius: 3px;
-    cursor: pointer;
-    transition: all 0.2s;
-    min-width: 40px;
-    text-align: center;
-  }
-  .button-group button:hover,
-  .toggle-btn:hover {
-    background: #555;
-  }
-  .button-group button.active,
-  .toggle-btn.active {
-    background-color: #14ffec;
-    color: #1f1f23;
-    font-weight: bold;
-  }
+  .option-item input:focus { outline: none; border-color: #14ffec; }
+  .button-group { display: flex; gap: 5px; background: #1f1f23; border-radius: 5px; padding: 4px; }
+  .button-group button, .toggle-btn { background: #3f3f46; border: 1px solid #555; color: #eee; padding: 6px 12px; border-radius: 3px; cursor: pointer; transition: all 0.2s; min-width: 40px; text-align: center; }
+  .button-group button:hover, .toggle-btn:hover { background: #555; }
+  .button-group button.active, .toggle-btn.active { background-color: #14ffec; color: #1f1f23; font-weight: bold; }
 </style>

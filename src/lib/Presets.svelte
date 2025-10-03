@@ -1,8 +1,6 @@
 <script>
   import { tick } from 'svelte'
-  import { showModal, panelStates, savedDefaultLayout } from './stores.js'
-  import { defaultLayout } from './defaultLayout.js'
-  import { get } from 'svelte/store'
+  import { showModal } from './stores.js'
 
   export let presets = []
   export let onSnapshot = () => {}
@@ -12,13 +10,7 @@
 
   let renamingId = null
   let editInput
-  // NEW: A temporary variable to hold the input's value during editing
   let tempName = ''
-
-  function applyDefaultLayout() {
-    const layoutToApply = get(savedDefaultLayout) || defaultLayout
-    onApply(layoutToApply)
-  }
 
   function confirmDelete(id) {
     showModal('Are you sure you want to delete this preset?', () => {
@@ -26,7 +18,6 @@
     })
   }
 
-  // UPDATED: Now sets the temporary name when editing begins
   async function startEditing(preset) {
     renamingId = preset.id
     tempName = preset.name
@@ -35,7 +26,6 @@
     editInput?.select()
   }
 
-  // UPDATED: This function now commits the final change
   function commitEdit() {
     if (renamingId !== null) {
       onRename({ id: renamingId, newName: tempName })
@@ -47,37 +37,41 @@
 <div class="presets-container">
   <div class="top-buttons">
     <button class="snapshot-btn" on:click={onSnapshot}> Snapshot </button>
-    <button class="default-btn" on:click={applyDefaultLayout}> Default </button>
   </div>
   <hr />
   <div class="presets-list">
     {#if presets.length > 0}
-      {#each presets as preset (preset.id)}
+      {#each presets as preset, i (i)}
         <div class="preset-row">
-          {#if renamingId === preset.id}
-            <input
-              type="text"
-              class="rename-input"
-              bind:this={editInput}
-              bind:value={tempName}
-              on:blur={commitEdit}
-              on:keydown={(e) => e.key === 'Enter' && commitEdit()}
-            />
-          {:else}
+          {#if preset}
+            {#if renamingId === preset.id}
+              <input
+                type="text"
+                class="rename-input"
+                bind:this={editInput}
+                bind:value={tempName}
+                on:blur={commitEdit}
+                on:keydown={(e) => e.key === 'Enter' && commitEdit()}
+              />
+            {:else}
+              <button
+                class="preset-btn"
+                on:click={() => onApply(preset.layout)}
+                on:dblclick={() => startEditing(preset)}
+                title="Click to apply, double-click to rename"
+              >
+                {preset.name}
+              </button>
+            {/if}
             <button
-              class="preset-btn"
-              on:click={() => onApply(preset.layout)}
-              on:dblclick={() => startEditing(preset)}
-              title="Click to apply, double-click to rename"
+              class="delete-btn"
+              on:click={() => confirmDelete(preset.id)}
+              title="Delete Preset">X</button
             >
-              {preset.name}
-            </button>
+          {:else}
+            <span class="empty-slot">Slot {i + 1} is empty</span>
+            <button class="delete-btn" disabled>X</button>
           {/if}
-          <button
-            class="delete-btn"
-            on:click={() => confirmDelete(preset.id)}
-            title="Delete Preset">X</button
-          >
         </div>
       {/each}
     {:else}
@@ -92,6 +86,8 @@
     flex-direction: column;
     gap: 10px;
     height: 100%;
+    padding: 15px;
+    box-sizing: border-box;
   }
   .top-buttons {
     display: flex;
@@ -103,8 +99,7 @@
     width: 100%;
     margin: 5px 0;
   }
-  .snapshot-btn,
-  .default-btn {
+  .snapshot-btn {
     width: 100%;
     padding: 10px;
     border-radius: 5px;
@@ -121,14 +116,7 @@
     background-color: #14ffec;
     color: #1f1f23;
   }
-  .default-btn {
-    border: 1px solid #555;
-    background-color: #3f3f46;
-    color: #eee;
-  }
-  .default-btn:hover {
-    background-color: #555;
-  }
+  /* REMOVED the unused .default-btn styles that were here */
   .presets-list {
     flex-grow: 1;
     display: flex;
@@ -181,13 +169,25 @@
     cursor: pointer;
     transition: background-color 0.2s;
   }
-  .delete-btn:hover {
+  .delete-btn:hover:not(:disabled) {
     background-color: #c53030;
     color: white;
+  }
+  .delete-btn:disabled {
+      opacity: 0.2;
+      cursor: not-allowed;
   }
   .no-presets-message {
     color: #888;
     text-align: center;
     margin-top: 10px;
+  }
+  .empty-slot {
+    flex-grow: 1;
+    text-align: left;
+    padding: 8px;
+    color: #666;
+    font-style: italic;
+    border: 1px solid transparent;
   }
 </style>

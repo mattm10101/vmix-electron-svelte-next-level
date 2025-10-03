@@ -17,7 +17,8 @@
     [inputs, targetInputName],
     ([$inputs, $targetInputName]) => {
       if (!$targetInputName) return null;
-      return $inputs.find((i) => i.title.startsWith($targetInputName));
+      // UPDATED: Now finds by exact shortTitle match, not prefix
+      return $inputs.find((i) => i.shortTitle === $targetInputName);
     }
   );
 
@@ -135,7 +136,7 @@
     </div>
 
   {:else}
-    <div class="placeholder">No input with prefix "{get(inputMappings).photos}" found.</div>
+    <div class="placeholder">Input "{get(inputMappings).photos}" not found.</div>
   {/if}
 </div>
 

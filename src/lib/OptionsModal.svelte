@@ -8,6 +8,7 @@
     optionsModalOpen.set(false);
   }
 
+  // REVERTED: Logic is now local to this component again
   function savePreset(index) {
     const currentLayout = get(panelStates);
     const layoutCopy = JSON.parse(JSON.stringify(currentLayout));
@@ -26,6 +27,7 @@
     });
   }
 
+  // REVERTED: Logic is now local to this component again
   function deletePreset(index) {
     layoutPresets.update(presets => {
       const newPresets = [...presets];

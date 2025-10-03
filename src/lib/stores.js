@@ -15,10 +15,11 @@ export const overlay1ActiveInput = writable(0)
 
 // --- UI & Application State ---
 export const logMessages = writable([])
+// UPDATED: Changed default 'photos' value
 export const inputMappings = persistentStore('inputMappings', {
   music: 'LIST - MUSIC',
   videos: 'LIST - VIDEOS',
-  photos: 'PHOTOS - ',
+  photos: 'Photos',
   lowerThirds: 'L3 - ',
 })
 export const savedDefaultLayout = persistentStore('savedDefaultLayout', null)
@@ -60,7 +61,6 @@ export const modalStore = writable({
   message: '',
   onConfirm: () => {},
 })
-// NEW: A store to control the visibility of our new Preferences modal
 export const optionsModalOpen = writable(false);
 
 
@@ -73,11 +73,41 @@ export const l3Inputs = derived(
   }
 )
 
-// Helper function to show the modal
+// --- Helper Functions ---
+
 export function showModal(message, onConfirm) {
   modalStore.set({
     isOpen: true,
     message,
     onConfirm,
   })
+}
+
+// --- Preset Management Functions ---
+export function saveCurrentLayoutToPreset(index) {
+  const currentLayout = get(panelStates);
+  const layoutCopy = JSON.parse(JSON.stringify(currentLayout));
+
+  layoutPresets.update(presets => {
+    const newPresets = [...presets];
+    while (newPresets.length <= index) {
+      newPresets.push(null);
+    }
+    newPresets[index] = {
+      id: Date.now() + index,
+      name: `Preset ${index + 1}`,
+      layout: layoutCopy,
+    };
+    return newPresets;
+  });
+}
+
+export function clearPreset(index) {
+  layoutPresets.update(presets => {
+    const newPresets = [...presets];
+    if (newPresets.length > index) {
+      newPresets[index] = null;
+    }
+    return newPresets;
+  });
 }

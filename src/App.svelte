@@ -5,7 +5,7 @@
     panelStates, inputs, logMessages, programInput, previewInput,
     layoutPresets, visibilityOptions, marquee, selectedPanelIds,
     scriptManager, gridOptions, savedDefaultLayout, inputMappings,
-    optionsModalOpen // Import the new store
+    optionsModalOpen
   } from './lib/stores.js'
   import { defaultLayout } from './lib/defaultLayout.js'
   import { sendCommand, fetchAllInputs, initializeVmixListener, addLog } from './lib/vmix.js'
@@ -26,7 +26,6 @@
   import Options from './lib/Options.svelte'
   import BackgroundGrid from './lib/BackgroundGrid.svelte'
   import Modal from './lib/Modal.svelte'
-  // Import the new modal component
   import OptionsModal from './lib/OptionsModal.svelte'
   
   const filteredInputs = derived(
@@ -57,7 +56,6 @@
       });
     });
 
-    // NEW: Listen for the menu click and open the modal
     window.electronAPI.onOpenOptionsModal(() => {
       optionsModalOpen.set(true);
     });
@@ -71,113 +69,120 @@
     }
   }
 
+  // --- REVERTED: Back to the simpler, stable keyboard handler ---
   function handleKeydown(event) {
-    const target = event.target
+    const target = event.target;
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-      return
+      return;
     }
-    const key = event.key
-    const shift = event.shiftKey
-    const keyNumber = parseInt(key, 10)
+    
+    const key = event.key;
+    const shift = event.shiftKey;
+    const keyNumber = parseInt(key, 10);
+
     if (key === '~') {
-      event.preventDefault()
-      const currentLayout = get(panelStates)
-      savedDefaultLayout.set(currentLayout)
-      addLog('Current layout saved as new default with hotkey (~).', 'info')
-      return
+      event.preventDefault();
+      const currentLayout = get(panelStates);
+      savedDefaultLayout.set(currentLayout);
+      addLog('Current layout saved as new default with hotkey (~).', 'info');
+      return;
     }
     if (key === '=' && !shift) {
-      event.preventDefault()
-      handleSnapshot()
-      addLog('Layout snapshot created with hotkey (=).', 'info')
-      return
+      event.preventDefault();
+      handleSnapshot();
+      addLog('Layout snapshot created with hotkey (=).', 'info');
+      return;
     }
     if (key === '-' && !shift) {
-      event.preventDefault()
-      const currentPresets = get(layoutPresets)
-      if (currentPresets.length > 0) {
-        const lastPreset = currentPresets[currentPresets.length - 1]
-        handleDeletePreset(lastPreset.id)
-        addLog(`Deleted last preset "${lastPreset.name}" with hotkey (-).`, 'info')
+      event.preventDefault();
+      const currentPresets = get(layoutPresets);
+      const lastPreset = [...currentPresets].reverse().find(p => p != null);
+      if (lastPreset) {
+        handleDeletePreset(lastPreset.id);
+        addLog(`Deleted last preset "${lastPreset.name}" with hotkey (-).`, 'info');
       }
-      return
+      return;
     }
     if (!shift && !isNaN(keyNumber) && keyNumber >= 1 && keyNumber <= 9) {
-      event.preventDefault()
-      const presets = get(layoutPresets)
-      const preset = presets[keyNumber - 1]
+      event.preventDefault();
+      const presets = get(layoutPresets);
+      const index = keyNumber - 1;
+      const preset = presets[index];
       if (preset) {
-        handleApplyPreset(preset.layout)
-        addLog(`Applied preset "${preset.name}" with key '${key}'.`, 'info')
+        handleApplyPreset(preset.layout);
+        addLog(`Applied preset "${preset.name}" with key '${key}'.`, 'info');
+      } else {
+        addLog(`Preset Slot ${keyNumber} is empty.`, 'info');
       }
-      return
+      return;
     }
     if (key === '`' && !shift) {
-      event.preventDefault()
-      applyDefaultLayout()
-      return
+      event.preventDefault();
+      applyDefaultLayout();
+      return;
     }
   }
+
   function handleWindowMouseDown(e) {
-    if (e.target.closest('.panel')) return
-    window.getSelection()?.removeAllRanges()
-    startMarquee(e)
+    if (e.target.closest('.panel')) return;
+    window.getSelection()?.removeAllRanges();
+    startMarquee(e);
   }
-  let startX, startY
+  let startX, startY;
   function startMarquee(e) {
-    startX = e.clientX
-    startY = e.clientY
-    selectedPanelIds.set(new Set())
-    marquee.set({ visible: true, x: startX, y: startY, width: 0, height: 0 })
-    document.body.classList.add('no-select')
-    document.addEventListener('mousemove', handleCanvasMouseMove)
-    document.addEventListener('mouseup', handleCanvasMouseUp, { once: true })
+    startX = e.clientX;
+    startY = e.clientY;
+    selectedPanelIds.set(new Set());
+    marquee.set({ visible: true, x: startX, y: startY, width: 0, height: 0 });
+    document.body.classList.add('no-select');
+    document.addEventListener('mousemove', handleCanvasMouseMove);
+    document.addEventListener('mouseup', handleCanvasMouseUp, { once: true });
   }
   function handleCanvasMouseMove(e) {
-    const currentX = e.clientX
-    const currentY = e.clientY
-    const x = Math.min(startX, currentX)
-    const y = Math.min(startY, currentY)
-    const width = Math.abs(currentX - startX)
-    const height = Math.abs(currentY - startY)
-    marquee.set({ visible: true, x, y, width, height })
+    const currentX = e.clientX;
+    const currentY = e.clientY;
+    const x = Math.min(startX, currentX);
+    const y = Math.min(startY, currentY);
+    const width = Math.abs(currentX - startX);
+    const height = Math.abs(currentY - startY);
+    marquee.set({ visible: true, x, y, width, height });
   }
   function handleCanvasMouseUp() {
-    document.removeEventListener('mousemove', handleCanvasMouseMove)
-    document.body.classList.remove('no-select')
-    const marqueeRect = get(marquee)
+    document.removeEventListener('mousemove', handleCanvasMouseMove);
+    document.body.classList.remove('no-select');
+    const marqueeRect = get(marquee);
     if (marqueeRect.width > 0 || marqueeRect.height > 0) {
-      const newSelection = new Set()
-      const allPanels = get(panelStates)
+      const newSelection = new Set();
+      const allPanels = get(panelStates);
       for (const id in allPanels) {
-        const panelRect = allPanels[id]
+        const panelRect = allPanels[id];
         if (panelRect.visible && marqueeRect.x < panelRect.x + panelRect.width && marqueeRect.x + marqueeRect.width > panelRect.x && marqueeRect.y < panelRect.y + panelRect.height && marqueeRect.y + marqueeRect.height > panelRect.y) {
-          newSelection.add(id)
+          newSelection.add(id);
         }
       }
-      selectedPanelIds.set(newSelection)
+      selectedPanelIds.set(newSelection);
     }
-    marquee.set({ visible: false, x: 0, y: 0, width: 0, height: 0 })
+    marquee.set({ visible: false, x: 0, y: 0, width: 0, height: 0 });
   }
   function handleSnapshot() {
-    const currentLayout = get(panelStates)
-    const layoutCopy = JSON.parse(JSON.stringify(currentLayout))
-    const presetName = `Preset ${get(layoutPresets).length + 1}`
-    layoutPresets.update((presets) => [...presets, { id: Date.now(), name: presetName, layout: layoutCopy }])
+    const currentLayout = get(panelStates);
+    const layoutCopy = JSON.parse(JSON.stringify(currentLayout));
+    const presetName = `Preset ${get(layoutPresets).length + 1}`;
+    layoutPresets.update((presets) => [...presets, { id: Date.now(), name: presetName, layout: layoutCopy }]);
   }
   function handleApplyPreset(layout) {
-    panelStates.set(JSON.parse(JSON.stringify(layout)))
+    panelStates.set(JSON.parse(JSON.stringify(layout)));
   }
   function handleDeletePreset(idToDelete) {
-    layoutPresets.update((presets) => presets.filter((p) => p.id !== idToDelete))
+    layoutPresets.update((presets) => presets.filter((p) => p?.id !== idToDelete));
   }
   function handleRenamePreset({ id, newName }) {
-    layoutPresets.update((presets) => presets.map((p) => (p.id === id ? { ...p, name: newName } : p)))
+    layoutPresets.update((presets) => presets.map((p) => (p?.id === id ? { ...p, name: newName } : p)));
   }
   function applyDefaultLayout() {
-    const layoutToApply = get(savedDefaultLayout) || defaultLayout
-    handleApplyPreset(layoutToApply)
-    addLog('Default layout applied.', 'info')
+    const layoutToApply = get(savedDefaultLayout) || defaultLayout;
+    handleApplyPreset(layoutToApply);
+    addLog('Default layout applied.', 'info');
   }
 </script>
 
