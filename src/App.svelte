@@ -1,57 +1,78 @@
 <script>
-  import { onMount } from 'svelte'
-  import { get, derived } from 'svelte/store'
+  import { onMount } from 'svelte';
+  import { get, derived } from 'svelte/store';
   import {
-    panelStates, inputs, logMessages, programInput, previewInput,
-    layoutPresets, visibilityOptions, marquee, selectedPanelIds,
-    scriptManager, gridOptions, savedDefaultLayout, inputMappings,
-    optionsModalOpen
-  } from './lib/stores.js'
-  import { defaultLayout } from './lib/defaultLayout.js'
-  import { sendCommand, fetchAllInputs, initializeVmixListener, addLog } from './lib/vmix.js'
-  import Panel from './lib/Panel.svelte'
-  import Transitions from './lib/Transitions.svelte'
-  import InputButton from './lib/InputButton.svelte'
-  import CommandLog from './lib/CommandLog.svelte'
-  import MasterAudioButton from './lib/MasterAudioButton.svelte'
-  import MasterFader from './lib/MasterFader.svelte'
-  import Presets from './lib/Presets.svelte'
-  import InputOptions from './lib/InputOptions.svelte'
-  import LowerThirds from './lib/LowerThirds.svelte'
-  import Music from './lib/Music.svelte'
-  import Videos from './lib/Videos.svelte'
-  import Photos from './lib/Photos.svelte'
-  import Scripts from './lib/Scripts.svelte'
-  import MarqueeBox from './lib/MarqueeBox.svelte'
-  import Options from './lib/Options.svelte'
-  import BackgroundGrid from './lib/BackgroundGrid.svelte'
-  import Modal from './lib/Modal.svelte'
-  import OptionsModal from './lib/OptionsModal.svelte'
-  
+    panelStates,
+    inputs,
+    logMessages,
+    programInput,
+    previewInput,
+    layoutPresets,
+    visibilityOptions,
+    marquee,
+    selectedPanelIds,
+    scriptManager,
+    gridOptions,
+    savedDefaultLayout,
+    inputMappings,
+    optionsModalOpen,
+    // UPDATED: Import real stores for audio
+    isMasterAudioMuted,
+    masterVolume,
+    audioInputs,
+  } from './lib/stores.js';
+  import { defaultLayout } from './lib/defaultLayout.js';
+  import {
+    sendCommand,
+    fetchAllInputs,
+    initializeVmixListener,
+    addLog,
+  } from './lib/vmix.js';
+  import Panel from './lib/Panel.svelte';
+  import Transitions from './lib/Transitions.svelte';
+  import InputButton from './lib/InputButton.svelte';
+  import CommandLog from './lib/CommandLog.svelte';
+  import MasterSection from './lib/MasterSection.svelte';
+  import AudioMixer from './lib/AudioMixer.svelte';
+  import Presets from './lib/Presets.svelte';
+  import InputOptions from './lib/InputOptions.svelte';
+  import LowerThirds from './lib/LowerThirds.svelte';
+  import Music from './lib/Music.svelte';
+  import Videos from './lib/Videos.svelte';
+  import Photos from './lib/Photos.svelte';
+  import Scripts from './lib/Scripts.svelte';
+  import MarqueeBox from './lib/MarqueeBox.svelte';
+  import Options from './lib/Options.svelte';
+  import BackgroundGrid from './lib/BackgroundGrid.svelte';
+  import Modal from './lib/Modal.svelte';
+  import OptionsModal from './lib/OptionsModal.svelte';
+
+  // REMOVED: All mock data has been deleted from this file.
+
   const filteredInputs = derived(
     [inputs, visibilityOptions, inputMappings],
     ([$inputs, $opts, $mappings]) => {
       const l3Prefix = $mappings.lowerThirds;
       if (!$opts.showL3s && l3Prefix) {
-        return $inputs.filter((input) => !input.title.startsWith(l3Prefix))
+        return $inputs.filter((input) => !input.title.startsWith(l3Prefix));
       }
-      return $inputs
+      return $inputs;
     }
   );
 
   onMount(() => {
     initializeVmixListener();
-    fetchAllInputs();
+    fetchAllInputs(); // This will populate the 'inputs' store with real data
     window.addEventListener('mousedown', handleWindowMouseDown);
 
     window.electronAPI.onTogglePanelVisibility((panelId) => {
-      panelStates.update(states => {
+      panelStates.update((states) => {
         return {
           ...states,
           [panelId]: {
             ...states[panelId],
-            visible: !states[panelId]?.visible
-          }
+            visible: !states[panelId]?.visible,
+          },
         };
       });
     });
@@ -69,13 +90,16 @@
     }
   }
 
-  // --- REVERTED: Back to the simpler, stable keyboard handler ---
   function handleKeydown(event) {
     const target = event.target;
-    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+    if (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.isContentEditable
+    ) {
       return;
     }
-    
+
     const key = event.key;
     const shift = event.shiftKey;
     const keyNumber = parseInt(key, 10);
@@ -96,10 +120,13 @@
     if (key === '-' && !shift) {
       event.preventDefault();
       const currentPresets = get(layoutPresets);
-      const lastPreset = [...currentPresets].reverse().find(p => p != null);
+      const lastPreset = [...currentPresets].reverse().find((p) => p != null);
       if (lastPreset) {
         handleDeletePreset(lastPreset.id);
-        addLog(`Deleted last preset "${lastPreset.name}" with hotkey (-).`, 'info');
+        addLog(
+          `Deleted last preset "${lastPreset.name}" with hotkey (-).`,
+          'info'
+        );
       }
       return;
     }
@@ -156,7 +183,13 @@
       const allPanels = get(panelStates);
       for (const id in allPanels) {
         const panelRect = allPanels[id];
-        if (panelRect.visible && marqueeRect.x < panelRect.x + panelRect.width && marqueeRect.x + marqueeRect.width > panelRect.x && marqueeRect.y < panelRect.y + panelRect.height && marqueeRect.y + marqueeRect.height > panelRect.y) {
+        if (
+          panelRect.visible &&
+          marqueeRect.x < panelRect.x + panelRect.width &&
+          marqueeRect.x + marqueeRect.width > panelRect.x &&
+          marqueeRect.y < panelRect.y + panelRect.height &&
+          marqueeRect.y + marqueeRect.height > panelRect.y
+        ) {
           newSelection.add(id);
         }
       }
@@ -168,7 +201,10 @@
     const currentLayout = get(panelStates);
     const layoutCopy = JSON.parse(JSON.stringify(currentLayout));
     const presetName = `Preset ${get(layoutPresets).length + 1}`;
-    layoutPresets.update((presets) => [...presets, { id: Date.now(), name: presetName, layout: layoutCopy }]);
+    layoutPresets.update((presets) => [
+      ...presets,
+      { id: Date.now(), name: presetName, layout: layoutCopy },
+    ]);
   }
   function handleApplyPreset(layout) {
     panelStates.set(JSON.parse(JSON.stringify(layout)));
@@ -177,7 +213,9 @@
     layoutPresets.update((presets) => presets.filter((p) => p?.id !== idToDelete));
   }
   function handleRenamePreset({ id, newName }) {
-    layoutPresets.update((presets) => presets.map((p) => (p?.id === id ? { ...p, name: newName } : p)));
+    layoutPresets.update((presets) =>
+      presets.map((p) => (p?.id === id ? { ...p, name: newName } : p))
+    );
   }
   function applyDefaultLayout() {
     const layoutToApply = get(savedDefaultLayout) || defaultLayout;
@@ -197,81 +235,158 @@
   <MarqueeBox />
 
   {#if $panelStates['transitions']?.visible}
-    <Panel id="transitions" title="Transitions" defaultState={{ x: 1050, y: 460, width: 220, height: 160, z: 1 }}>
+    <Panel
+      id="transitions"
+      title="Transitions"
+      defaultState={{ x: 1050, y: 460, width: 220, height: 160, z: 1 }}
+    >
       <Transitions onCommand={sendCommand} />
     </Panel>
   {/if}
 
   {#if $panelStates['audio']?.visible}
-    <Panel id="audio" title="Audio" defaultState={{ x: 1050, y: 20, width: 220, height: 160, z: 1 }}>
-      <div class="audio-controls"><MasterAudioButton /> <MasterFader /></div>
+    <Panel
+      id="audio"
+      title="Audio"
+      defaultState={{ x: 1050, y: 20, width: 320, height: 430, z: 1 }}
+    >
+      <div class="audio-panel-layout">
+        <MasterSection
+          isMuted={$isMasterAudioMuted}
+          bind:volume={$masterVolume}
+          level={0}
+        />
+        <hr />
+        <AudioMixer audioInputs={$audioInputs} />
+      </div>
     </Panel>
   {/if}
 
   {#if $panelStates['inputOptions']?.visible}
-    <Panel id="inputOptions" title="Input Options" defaultState={{ x: 1050, y: 190, width: 220, height: 260, z: 1 }}>
+    <Panel
+      id="inputOptions"
+      title="Input Options"
+      defaultState={{ x: 1050, y: 190, width: 220, height: 260, z: 1 }}
+    >
       <InputOptions />
     </Panel>
   {/if}
 
   {#if $panelStates['lowerThirds']?.visible}
-    <Panel id="lowerThirds" title="Lower Thirds" defaultState={{ x: 1050, y: 630, width: 220, height: 200, z: 1 }}>
+    <Panel
+      id="lowerThirds"
+      title="Lower Thirds"
+      defaultState={{ x: 1050, y: 630, width: 220, height: 200, z: 1 }}
+    >
       <LowerThirds onCommand={sendCommand} />
     </Panel>
   {/if}
 
   {#if $panelStates['music']?.visible}
-    <Panel id="music" title="Music" defaultState={{ x: 1050, y: 840, width: 220, height: 300, z: 1 }}>
+    <Panel
+      id="music"
+      title="Music"
+      defaultState={{ x: 1050, y: 840, width: 220, height: 300, z: 1 }}
+    >
       <Music />
     </Panel>
   {/if}
 
   {#if $panelStates['videos']?.visible}
-    <Panel id="videos" title="Videos" defaultState={{ x: 820, y: 840, width: 220, height: 300, z: 1 }}>
+    <Panel
+      id="videos"
+      title="Videos"
+      defaultState={{ x: 820, y: 840, width: 220, height: 300, z: 1 }}
+    >
       <Videos />
     </Panel>
   {/if}
 
   {#if $panelStates['photos']?.visible}
-    <Panel id="photos" title="Photos" defaultState={{ x: 610, y: 840, width: 220, height: 120, z: 1 }}>
+    <Panel
+      id="photos"
+      title="Photos"
+      defaultState={{ x: 610, y: 840, width: 220, height: 120, z: 1 }}
+    >
       <Photos />
     </Panel>
   {/if}
 
   {#if $panelStates['options']?.visible}
-    <Panel id="options" title="Options" defaultState={{ x: 660, y: 770, width: 380, height: 200, z: 1 }}>
+    <Panel
+      id="options"
+      title="Options"
+      defaultState={{ x: 660, y: 770, width: 380, height: 200, z: 1 }}
+    >
       <Options />
     </Panel>
   {/if}
 
   {#if $panelStates['scripts']?.visible}
-    <Panel id="scripts" title="Scripts" defaultState={{ x: 20, y: 770, width: 400, height: 200, z: 1 }}>
+    <Panel
+      id="scripts"
+      title="Scripts"
+      defaultState={{ x: 20, y: 770, width: 400, height: 200, z: 1 }}
+    >
       <Scripts onCommand={sendCommand} />
     </Panel>
   {/if}
 
   {#if $panelStates['presets']?.visible}
-    <Panel id="presets" title="Presets" defaultState={{ x: 430, y: 770, width: 220, height: 200, z: 1 }}>
-      <Presets presets={$layoutPresets} onSnapshot={handleSnapshot} onApply={handleApplyPreset} onDelete={handleDeletePreset} onRename={handleRenamePreset}/>
+    <Panel
+      id="presets"
+      title="Presets"
+      defaultState={{ x: 430, y: 770, width: 220, height: 200, z: 1 }}
+    >
+      <Presets
+        presets={$layoutPresets}
+        onSnapshot={handleSnapshot}
+        onApply={handleApplyPreset}
+        onDelete={handleDeletePreset}
+        onRename={handleRenamePreset}
+      />
     </Panel>
   {/if}
 
   {#if $panelStates['inputs']?.visible}
-    <Panel id="inputs" title="Inputs" defaultState={{ x: 20, y: 20, width: 1020, height: 740, z: 1 }}>
+    <Panel
+      id="inputs"
+      title="Inputs"
+      defaultState={{ x: 20, y: 20, width: 1020, height: 740, z: 1 }}
+    >
       <div slot="header-controls">
-        <button class="panel-control" on:click={fetchAllInputs} title="Refresh Inputs">⟳</button>
+        <button
+          class="panel-control"
+          on:click={fetchAllInputs}
+          title="Refresh Inputs"
+          >⟳</button
+        >
       </div>
       <div class="inputs-panel-content">
         {#if $inputs.length > 0}
-          <div class="input-grid" class:hide-numbers={!$visibilityOptions.showNumbers} style="--grid-gap: {$gridOptions.gapSize}px;">
+          <div
+            class="input-grid"
+            class:hide-numbers={!$visibilityOptions.showNumbers}
+            style="--grid-gap: {$gridOptions.gapSize}px;"
+          >
             {#each $filteredInputs as input (input.id)}
-              <InputButton id={input.id} name={input.shortTitle} number={input.id} isProgram={input.id === $programInput} isPreview={$visibilityOptions.showPreviewLed && input.id === $previewInput} onCommand={sendCommand}/>
+              <InputButton
+                id={input.id}
+                name={input.shortTitle}
+                number={input.id}
+                isProgram={input.id === $programInput}
+                isPreview={$visibilityOptions.showPreviewLed &&
+                  input.id === $previewInput}
+                onCommand={sendCommand}
+              />
             {/each}
           </div>
         {:else}
           <div class="placeholder">
             <p>No inputs found in vMix.</p>
-            <p class="subtext">Add inputs in vMix, then click the refresh icon.</p>
+            <p class="subtext">
+              Add inputs in vMix, then click the refresh icon.
+            </p>
           </div>
         {/if}
       </div>
@@ -279,7 +394,11 @@
   {/if}
 
   {#if $panelStates['log']?.visible}
-    <Panel id="log" title="Command Log" defaultState={{ x: 20, y: 980, width: 1250, height: 140, z: 1 }}>
+    <Panel
+      id="log"
+      title="Command Log"
+      defaultState={{ x: 20, y: 980, width: 1250, height: 140, z: 1 }}
+    >
       <CommandLog messages={$logMessages} />
     </Panel>
   {/if}
@@ -293,8 +412,35 @@
     display: flex;
     flex-direction: column;
   }
-  
-  :global(.audio-controls) { display: flex; flex-direction: column; gap: 15px; height: 100%; justify-content: space-around; }
-  :global(.placeholder) { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; text-align: center; color: #888; }
-  :global(.placeholder .subtext) { font-size: 0.9em; margin-top: 8px; color: #666; }
+
+  :global(.placeholder) {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    text-align: center;
+    color: #888;
+  }
+  :global(.placeholder .subtext) {
+    font-size: 0.9em;
+    margin-top: 8px;
+    color: #666;
+  }
+
+  /* UPDATED STYLES FOR THE AUDIO PANEL */
+  :global(.audio-panel-layout) {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 15px;
+    padding-top: 10px; /* Reduced top padding */
+    height: 100%;
+    box-sizing: border-box;
+  }
+  :global(.audio-panel-layout hr) {
+    border-color: #3c3c3c;
+    width: 100%;
+    margin: 0;
+  }
 </style>

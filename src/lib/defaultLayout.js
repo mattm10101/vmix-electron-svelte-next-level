@@ -11,8 +11,8 @@ export const defaultLayout = {
   audio: {
     x: 1050,
     y: 20,
-    width: 220,
-    height: 160,
+    width: 320, // UPDATED
+    height: 430, // UPDATED
     z: 1,
     min: false,
     visible: true,
@@ -107,4 +107,4 @@ export const defaultLayout = {
     min: false,
     visible: true,
   },
-}
+};

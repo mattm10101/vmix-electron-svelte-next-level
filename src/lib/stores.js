@@ -1,51 +1,50 @@
 // src/lib/stores.js
 
-import { writable, derived, get } from 'svelte/store'
-import { persistentStore } from './persistentStore.js'
-import { defaultLayout } from './defaultLayout.js'
+import { writable, derived, get } from 'svelte/store';
+import { persistentStore } from './persistentStore.js';
+import { defaultLayout } from './defaultLayout.js';
 
 // --- Core vMix State ---
-export const inputs = writable([])
-export const programInput = writable(0)
-export const previewInput = writable(0)
-export const isMasterAudioMuted = writable(false)
-export const masterVolume = writable(100)
-export const playingInputs = writable(new Set())
-export const overlay1ActiveInput = writable(0)
+export const inputs = writable([]);
+export const programInput = writable(0);
+export const previewInput = writable(0);
+export const isMasterAudioMuted = writable(false);
+export const masterVolume = writable(100);
+export const playingInputs = writable(new Set());
+export const overlay1ActiveInput = writable(0);
 
 // --- UI & Application State ---
-export const logMessages = writable([])
-// UPDATED: Changed default 'photos' value
+export const logMessages = writable([]);
 export const inputMappings = persistentStore('inputMappings', {
   music: 'LIST - MUSIC',
   videos: 'LIST - VIDEOS',
   photos: 'Photos',
   lowerThirds: 'L3 - ',
-})
-export const savedDefaultLayout = persistentStore('savedDefaultLayout', null)
+});
+export const savedDefaultLayout = persistentStore('savedDefaultLayout', null);
 export const panelStates = persistentStore(
   'panelStates',
   get(savedDefaultLayout) || defaultLayout
-)
-export const layoutPresets = persistentStore('layoutPresets', [])
+);
+export const layoutPresets = persistentStore('layoutPresets', []);
 export const scriptManager = persistentStore('scriptManager', {
   scripts: [
     { id: 1, name: 'Script 1' },
     { id: 2, name: 'Script 2' },
   ],
   layout: 2,
-})
+});
 export const visibilityOptions = persistentStore('visibilityOptions', {
   showNumbers: true,
   showL3s: true,
   showPreviewLed: true,
-})
+});
 export const gridOptions = persistentStore('gridOptions', {
   show: true,
   snapSize: 10,
   snapToGrid: true,
   snapResize: true,
-})
+});
 
 // --- UI Interaction Stores ---
 export const marquee = writable({
@@ -54,33 +53,53 @@ export const marquee = writable({
   y: 0,
   width: 0,
   height: 0,
-})
-export const selectedPanelIds = writable(new Set())
+});
+export const selectedPanelIds = writable(new Set());
 export const modalStore = writable({
   isOpen: false,
   message: '',
   onConfirm: () => {},
-})
+});
 export const optionsModalOpen = writable(false);
 
-
 // --- Derived Stores ---
+
+// Filter for Lower Thirds
 export const l3Inputs = derived(
   [inputs, inputMappings],
   ([$inputs, $mappings]) => {
-    if (!$mappings.lowerThirds) return []
-    return $inputs.filter((input) => input.title.startsWith($mappings.lowerThirds))
+    if (!$mappings.lowerThirds) return [];
+    return $inputs.filter((input) =>
+      input.title.startsWith($mappings.lowerThirds)
+    );
   }
-)
+);
+
+// Filter for the main audio mixer
+export const audioInputs = derived(
+  [inputs, inputMappings],
+  ([$inputs, $mappings]) => {
+    const excludedTitles = new Set([
+      $mappings.music,
+      $mappings.videos,
+      $mappings.photos,
+    ]);
+    // A much more reliable way to find audio-capable inputs is to check for the 'muted' attribute,
+    // as non-audio inputs like images do not have it in the XML.
+    return $inputs.filter(
+      (input) =>
+        input.muted !== undefined && !excludedTitles.has(input.shortTitle)
+    );
+  }
+);
 
 // --- Helper Functions ---
-
 export function showModal(message, onConfirm) {
   modalStore.set({
     isOpen: true,
     message,
     onConfirm,
-  })
+  });
 }
 
 // --- Preset Management Functions ---
@@ -88,7 +107,7 @@ export function saveCurrentLayoutToPreset(index) {
   const currentLayout = get(panelStates);
   const layoutCopy = JSON.parse(JSON.stringify(currentLayout));
 
-  layoutPresets.update(presets => {
+  layoutPresets.update((presets) => {
     const newPresets = [...presets];
     while (newPresets.length <= index) {
       newPresets.push(null);
@@ -103,7 +122,7 @@ export function saveCurrentLayoutToPreset(index) {
 }
 
 export function clearPreset(index) {
-  layoutPresets.update(presets => {
+  layoutPresets.update((presets) => {
     const newPresets = [...presets];
     if (newPresets.length > index) {
       newPresets[index] = null;
