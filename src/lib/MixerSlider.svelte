@@ -1,20 +1,31 @@
 <script>
-  export let level = 0; // VU level, 0-100 (will be used in next step)
-  export let volume = 100; // Slider position, 0-100
-  export let isProgram = false;
+  export let vu = { f1: 0, f2: 0 };
+  export let volume = 100;
+  export let isMuted = false;
 
-  $: meterWidth = Math.min(level, volume);
+  // --- THE FIX: Apply a logarithmic curve to the linear VU values ---
+  $: leftWidth = Math.min(Math.pow(vu?.f1 || 0, 0.25) * 100, 100);
+  $: rightWidth = Math.min(Math.pow(vu?.f2 || 0, 0.25) * 100, 100);
 
-  $: meterGradient = isProgram
-    ? 'linear-gradient(to right, #39FF14, #b2ffad)' // Pure Neon Green
-    : 'linear-gradient(to right, #00d0ff, #a7eeff)'; // Theme blue
+  $: meterGradient = isMuted
+    ? 'linear-gradient(to right, #007acc, #00d0ff)' // Muted Blue
+    : 'linear-gradient(to right, #22c55e, #39FF14)'; // Active Green
+    
+  $: meterShadow = isMuted
+    ? '0 0 6px 2px rgba(0, 208, 255, 0.6)' // Blue glow
+    : '0 0 6px 2px rgba(57, 255, 20, 0.6)'; // Green glow
 </script>
 
 <div class="slider-wrapper">
   <div
-    class="vu-meter-bar"
-    style="width: {meterWidth}%; background: {meterGradient};"
+    class="vu-meter-bar left-channel"
+    style="width: {leftWidth}%; background: {meterGradient}; box-shadow: {meterShadow};"
   ></div>
+  <div
+    class="vu-meter-bar right-channel"
+    style="width: {rightWidth}%; background: {meterGradient}; box-shadow: {meterShadow};"
+  ></div>
+
   <input
     type="range"
     min="0"
@@ -31,19 +42,24 @@
     display: flex;
     align-items: center;
     flex-grow: 1;
+    height: 8px;
   }
 
   .vu-meter-bar {
     position: absolute;
     left: 0;
-    height: 8px;
-    border-radius: 5px;
     transition: width 0.05s linear;
-    box-shadow: 0 0 6px 2px rgba(0, 208, 255, 0.75);
   }
 
-  :global(.program-slider) .vu-meter-bar {
-    box-shadow: 0 0 6px 2px rgba(57, 255, 20, 0.75);
+  .left-channel {
+    top: 0;
+    height: 3px;
+    border-radius: 3px;
+  }
+  .right-channel {
+    bottom: 0;
+    height: 3px;
+    border-radius: 3px;
   }
 
   .fader {

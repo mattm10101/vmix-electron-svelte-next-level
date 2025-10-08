@@ -3,6 +3,7 @@
   import { sendCommand } from './vmix.js';
   import { inputs } from './stores.js';
   export let audioInputs = [];
+  export let vuInputLevels = {};
   
   let isFolded = false;
   let throttleTimers = new Map();
@@ -42,7 +43,9 @@
   {#if !isFolded}
     <div class="collapsible-content">
       {#each audioInputs as input (input.id)}
-        <div class="mixer-row" class:program-slider={input.isProgram}>
+        {@const vu = vuInputLevels[input.key]}
+
+        <div class="mixer-row">
           <button 
             class="mute-btn" 
             class:muted={input.muted} 
@@ -59,9 +62,9 @@
           <div class="slider-details">
             <span class="input-name">{input.shortTitle}</span>
             <MixerSlider 
-              level={0}
+              {vu}
               volume={input.volume}
-              isProgram={input.isProgram}
+              isMuted={input.muted}
               on:input={(e) => handleVolumeChange(input, e)}
             />
           </div>

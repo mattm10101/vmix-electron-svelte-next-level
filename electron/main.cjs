@@ -27,10 +27,10 @@ const toggleablePanels = [
   { id: 'log', label: 'Command Log' },
 ];
 
-// --- NEW VU POLLING FUNCTION ---
+// --- CORRECTED VU POLLING FUNCTION ---
 function startVuPolling(window) {
     if (!window) return;
-    console.log('✅ Starting vMix VU Polling on port 8088...');
+    console.log('✅ Starting vMix VU Polling (Corrected) on port 8088...');
 
     const parser = new XMLParser({
         ignoreAttributes: false,
@@ -39,50 +39,60 @@ function startVuPolling(window) {
 
     setInterval(() => {
         const req = http.get(`http://${VMIX_HOST}:${VMIX_HTTP_PORT}/api`, (res) => {
+            const { statusCode } = res;
+            if (statusCode !== 200) {
+                res.resume();
+                return;
+            }
+
             let data = '';
             res.on('data', (chunk) => { data += chunk; });
             res.on('end', () => {
                 try {
                     const vmixObj = parser.parse(data);
-                    if (!vmixObj?.vmix?.audio) return;
+                    if (!vmixObj?.vmix) return;
 
-                    const masterAudio = vmixObj.vmix.audio.master;
-                    let inputAudio = vmixObj.vmix.audio.input || [];
-                    if (!Array.isArray(inputAudio)) inputAudio = [inputAudio];
+                    // 1. Get Master Levels from the <audio> tag
+                    const masterAudio = vmixObj.vmix.audio?.master;
 
+                    // 2. Get All Inputs from the main <inputs> tag
+                    let allInputs = vmixObj.vmix.inputs?.input || [];
+                    if (!Array.isArray(allInputs)) allInputs = [allInputs];
+
+                    // 3. Build the payload from the correct locations
                     const vuData = {
                         master: {
-                            f1: parseFloat(masterAudio?.F1Level || 0),
-                            f2: parseFloat(masterAudio?.F2Level || 0)
+                            f1: parseFloat(masterAudio?.meterF1 || 0),
+                            f2: parseFloat(masterAudio?.meterF2 || 0)
                         },
                         inputs: {}
                     };
 
-                    for (const input of inputAudio) {
-                        // The 'key' attribute uniquely identifies the input
-                        vuData.inputs[input.key] = {
-                            f1: parseFloat(input.F1Level || 0),
-                            f2: parseFloat(input.F2Level || 0)
-                        };
+                    // 4. Loop through the MAIN inputs list to find meter data
+                    for (const input of allInputs) {
+                        if (input.meterF1 !== undefined || input.meterF2 !== undefined) {
+                            vuData.inputs[input.key] = {
+                                f1: parseFloat(input.meterF1 || 0),
+                                f2: parseFloat(input.meterF2 || 0)
+                            };
+                        }
                     }
+                    
                     if (!window.isDestroyed()) {
                         window.webContents.send('vmix-vu-data', vuData);
                     }
                 } catch (e) {
-                    console.error('Error parsing VU meter XML:', e.message);
+                    // console.error('Error parsing VU meter XML:', e.message);
                 }
             });
         });
 
         req.on('error', (e) => {
-            // Suppress frequent ECONNREFUSED errors if vMix isn't running to keep the log clean
-            if (e.code !== 'ECONNREFUSED') {
-                console.error(`VU Polling HTTP Error: ${e.message}`);
-            }
+           // Suppress frequent errors
         });
 
         req.end();
-    }, 100); // Poll every 100ms
+    }, 100);
 }
 
 
@@ -149,7 +159,6 @@ function createWindow() {
   const vmixConnector = new VmixConnector(VMIX_HOST, VMIX_TCP_PORT, mainWindow);
   vmixConnector.connect();
 
-  // --- START THE NEW VU POLLING ---
   startVuPolling(mainWindow);
 
   ipcMain.on('to-vmix', (_, command) => {

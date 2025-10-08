@@ -6,7 +6,7 @@
 
   export let isMuted = false;
   export let volume = 85;
-  export let level = 0;
+  export let vu = {}; // Changed from 'level' to 'vu'
 
   let isFolded = false;
   let debounceTimer;
@@ -46,7 +46,7 @@
       <MasterAudioButton {isMuted} />
 
       <div class="master-slider-wrapper">
-        <MixerSlider {level} bind:volume={volume} />
+        <MixerSlider {vu} bind:volume={volume} {isMuted} />
         <div class="fader-value">{Math.round(volume)}</div>
       </div>
     </div>

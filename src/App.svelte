@@ -20,7 +20,7 @@
     masterVolume,
     audioInputs,
     searchQuery,
-    vuLevels, // <-- 1. Import the new store
+    vuLevels,
   } from './lib/stores.js';
   import { defaultLayout } from './lib/defaultLayout.js';
   import {
@@ -75,7 +75,6 @@
     fetchAllInputs();
     window.addEventListener('mousedown', handleWindowMouseDown);
 
-    // --- 2. Listen for VU data and update the store ---
     window.electronAPI.onVuData((data) => {
       vuLevels.set(data);
     });
@@ -98,11 +97,6 @@
 
     return () => window.removeEventListener('mousedown', handleWindowMouseDown);
   });
-
-  // --- 3. Reactively calculate the master VU level ---
-  $: masterVuLevel = $vuLevels.master
-    ? Math.max($vuLevels.master.f1 || 0, $vuLevels.master.f2 || 0) * 100
-    : 0;
 
   $: if ($panelStates) {
     if (Object.keys($panelStates).length > 0) {
@@ -262,7 +256,7 @@
   {#if $panelStates['audio']?.visible}
     <Panel id="audio" title="Audio" defaultState={{ x: 1050, y: 20, width: 320, height: 430, z: 1 }}>
       <div class="audio-panel-layout">
-        <MasterSection isMuted={$isMasterAudioMuted} bind:volume={$masterVolume} level={masterVuLevel} />
+        <MasterSection isMuted={$isMasterAudioMuted} bind:volume={$masterVolume} vu={$vuLevels.master} />
         <hr />
         <AudioMixer audioInputs={$audioInputs} vuInputLevels={$vuLevels.inputs} />
       </div>
