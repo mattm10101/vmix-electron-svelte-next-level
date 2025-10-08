@@ -13,6 +13,8 @@ import {
 } from './stores.js';
 
 let logId = 0;
+let fetchDebounceTimer = null;
+let isFetching = false;
 
 const isTargetInput = (input, identifier) =>
   String(input.id) === identifier ||
@@ -38,25 +40,49 @@ export function sendCommand(command) {
   addLog(`SENT: ${command}`, 'sent');
 }
 
-export async function fetchAllInputs() {
-  if (!window.electronAPI)
-    return addLog('ERROR: electronAPI is not available.', 'error');
-  addLog('Fetching all inputs...', 'info');
-  try {
-    const fetchedInputs = await window.electronAPI.getAllInputs();
-    inputs.set(fetchedInputs || []);
-    addLog(`Found ${fetchedInputs.length || 0} inputs.`, 'info');
-  } catch (e) {
-    addLog(`Error fetching inputs: ${e.message}`, 'error');
-    inputs.set([]);
+// --- NEW ROBUST fetchAllInputs FUNCTION ---
+export function fetchAllInputs() {
+  clearTimeout(fetchDebounceTimer);
+
+  // If a fetch is already in progress, schedule another one for just after.
+  // This ensures we always get the latest state after a burst of actions.
+  if (isFetching) {
+    fetchDebounceTimer = setTimeout(fetchAllInputs, 150);
+    return;
   }
+
+  isFetching = true;
+  addLog('Fetching all inputs...', 'info');
+
+  // Safety timeout to prevent the lock from getting stuck
+  const fetchTimeout = setTimeout(() => {
+    if (isFetching) {
+      addLog('Fetch timeout reached, resetting lock.', 'error');
+      isFetching = false;
+    }
+  }, 3000); // 3-second timeout
+
+  window.electronAPI.getAllInputs()
+    .then(fetchedInputs => {
+      inputs.set(fetchedInputs || []);
+      // Omit success log for fetch to reduce log spam
+    })
+    .catch(e => {
+      // The error from the backend is already specific, use it directly.
+      addLog(`Error fetching inputs: ${e.message}`, 'error');
+      inputs.set([]);
+    })
+    .finally(() => {
+      isFetching = false; // Release the lock
+      clearTimeout(fetchTimeout); // Clear the safety timeout
+    });
 }
+
 
 export function sendCommandAndRefresh(command) {
   sendCommand(command);
-  setTimeout(() => {
-    fetchAllInputs();
-  }, 100);
+  // No longer a hardcoded timeout, just calls the debounced function
+  fetchAllInputs();
 }
 
 export async function queryVmixXpath(xpath) {
@@ -87,14 +113,11 @@ export function initializeVmixListener() {
       const state = parts.length > 4 ? parts[4] : undefined;
 
       switch (activator) {
-        // UPDATED: This case is now robust, just like the others.
         case 'Input':
           if (state === '1') {
             const targetInput = get(inputs).find(input => isTargetInput(input, identifier));
             programInput.set(targetInput ? targetInput.id : 0);
           } else {
-            // If state is 0, it means the input is no longer in program.
-            // We can check if the current programInput matches to clear it.
             if (get(programInput) !== 0) {
                  const currentProgramInput = get(inputs).find(i => i.id === get(programInput));
                  if(currentProgramInput && isTargetInput(currentProgramInput, identifier)) {

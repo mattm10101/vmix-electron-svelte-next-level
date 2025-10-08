@@ -5,7 +5,6 @@ const { contextBridge, ipcRenderer } = require('electron')
 console.log('✅ Preload script has been loaded!')
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  // --- Existing Functions ---
   sendCommand: (command) => ipcRenderer.send('to-vmix', command),
   receive: (callback) => {
     ipcRenderer.on('from-vmix', (_ev, data) => callback(data))
@@ -21,8 +20,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onOpenOptionsModal: (callback) => {
     ipcRenderer.on('open-options-modal', () => callback())
   },
-
-  // --- NEW: Function for VU Meter data stream ---
   onVuData: (callback) => {
     ipcRenderer.on('vmix-vu-data', (_event, data) => callback(data));
   }

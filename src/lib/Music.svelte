@@ -1,7 +1,7 @@
 <script>
   import { tick } from 'svelte';
   import { derived } from 'svelte/store';
-  import { inputs, playingInputs, inputMappings } from './stores.js';
+  import { inputs, playingInputs, inputMappings, vuLevels } from './stores.js';
   import { sendCommandAndRefresh, sendCommand } from './vmix.js';
   import ListTrackList from './ListTrackList.svelte';
   import ListTransportControls from './ListTransportControls.svelte';
@@ -18,15 +18,19 @@
     }
   );
 
+  $: realtimeData = $musicInput ? $vuLevels.inputs[$musicInput.key] : null;
+  $: position = realtimeData?.position || 0;
+  $: duration = realtimeData?.duration || 0;
+  $: isPlayingForTimer = realtimeData?.state === 'Running';
+  
   $: isPlaying = $musicInput && $playingInputs.has($musicInput.id);
   $: isMuted = $musicInput?.muted;
   $: vmixSelectedIndex = $musicInput?.selectedIndex ? $musicInput.selectedIndex - 1 : -1;
-
   $: nowPlayingName = (() => {
     if (!$musicInput || !$musicInput.list?.[vmixSelectedIndex]) return '';
     return $musicInput.list[vmixSelectedIndex].name;
   })();
-
+  
   let wrapperElement, textElement, needsScrolling = false, isAnimationPaused = false;
   $: {
     if (isPlaying && nowPlayingName) {
@@ -53,7 +57,6 @@
   function handleTrackClick(event) {
     if (!$musicInput) return;
     const clickedIndex = event.detail;
-
     if (isPlaying) {
       uiCuedIndex = clickedIndex;
     } else {
@@ -77,7 +80,6 @@
   function handleTransportCommand(event) {
     if (!$musicInput) return;
     const command = event.detail;
-
     if (command === 'PlayPause') {
       if (isPlaying) {
         sendCommandAndRefresh(`FUNCTION PlayPause Input=${$musicInput.key}`);
@@ -102,20 +104,25 @@
   function handleVolumeChange(event) {
     if (!$musicInput) return;
     const uiVolume = event.target.value;
-
     inputs.update((allInputs) =>
       allInputs.map(input =>
         input.id === $musicInput.id ? { ...input, volume: uiVolume } : input
       )
     );
-
     if (throttleTimer) return;
 
     throttleTimer = setTimeout(() => {
       throttleTimer = null;
     }, 50);
-
     sendCommand(`FUNCTION SetVolume Input=${$musicInput.key}&Value=${uiVolume}`);
+  }
+
+  function formatMilliseconds(ms) {
+    if (isNaN(ms) || ms < 0) return '00:00';
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+    const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+    return `${minutes}:${seconds}`;
   }
 </script>
 
@@ -133,11 +140,19 @@
           class:scrolling={isPlaying && needsScrolling && !isAnimationPaused}
           bind:this={textElement}
         >
-          {isPlaying ? nowPlayingName : 'Paused'}
+          {isPlayingForTimer ? nowPlayingName : 'Paused'}
         </span>
       </div>
     </button>
     
+    {#if duration > 0}
+      <div class="timer-display">
+        <span class="elapsed">{formatMilliseconds(position)}</span>
+        <span class="duration">{formatMilliseconds(duration)}</span>
+        <span class="remaining">-{formatMilliseconds(duration - position)}</span>
+      </div>
+    {/if}
+
     <div class="controls-wrapper">
       <ListTransportControls
         listInput={$musicInput}
@@ -194,8 +209,8 @@
 <style>
   @keyframes pause-scroll-fade { 0%, 35% { transform: translateX(0); opacity: 1; } 91% { transform: translateX(var(--scroll-distance)); opacity: 1; } 100% { transform: translateX(var(--scroll-distance)); opacity: 0; } }
   .music-container { height: 100%; display: flex; flex-direction: column; padding: 15px; }
-  .now-playing-container { margin-bottom: 12px; }
-  .controls-wrapper { margin-bottom: 12px; }
+  .now-playing-container { margin-bottom: 8px; }
+  .controls-wrapper { margin-top: 8px; margin-bottom: 12px; }
   .fader-container { margin-bottom: 12px; }
   .source-display { margin-top: 12px; }
   :global(.track-list-scroller) { flex-grow: 1; min-height: 0; }
@@ -217,4 +232,29 @@
   .fader-value { font-weight: bold; color: #14ffec; min-width: 30px; text-align: right; }
   .source-display { font-family: 'Courier New', Courier, monospace; font-size: 0.75em; color: #888; text-align: center; flex-shrink: 0; padding-top: 10px; border-top: 1px solid #3a3a3e; }
   .placeholder { color: #888; text-align: center; margin: auto 0; }
+
+  /* --- UPDATED: Styles for the new timer layout --- */
+  .timer-display {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9em;
+    color: white;
+    font-weight: bold;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    background: #1f1f23;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #4a4a4e;
+  }
+  .timer-display .duration {
+    text-align: center;
+  }
+  .timer-display .elapsed {
+    text-align: left;
+    color: #ccc; /* Slightly dimmer for contrast */
+  }
+  .timer-display .remaining {
+    text-align: right;
+  }
 </style>

@@ -1,3 +1,5 @@
+// electron/VmixConnector.cjs
+
 const net = require('net')
 
 class VmixConnector {
@@ -22,7 +24,6 @@ class VmixConnector {
     this.client.connect(this.port, this.host, () => {
       console.log('vMix TCP Connected')
       this.isConnected = true
-      // REVERTED: Now subscribing to ACTS again.
       this.sendCommand('SUBSCRIBE ACTS')
     })
   }

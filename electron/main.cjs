@@ -27,10 +27,10 @@ const toggleablePanels = [
   { id: 'log', label: 'Command Log' },
 ];
 
-// --- CORRECTED VU POLLING FUNCTION ---
+// --- UPDATED POLLING FUNCTION ---
 function startVuPolling(window) {
     if (!window) return;
-    console.log('✅ Starting vMix VU Polling (Corrected) on port 8088...');
+    console.log('✅ Starting vMix Real-time Polling on port 8088...');
 
     const parser = new XMLParser({
         ignoreAttributes: false,
@@ -52,15 +52,11 @@ function startVuPolling(window) {
                     const vmixObj = parser.parse(data);
                     if (!vmixObj?.vmix) return;
 
-                    // 1. Get Master Levels from the <audio> tag
                     const masterAudio = vmixObj.vmix.audio?.master;
-
-                    // 2. Get All Inputs from the main <inputs> tag
                     let allInputs = vmixObj.vmix.inputs?.input || [];
                     if (!Array.isArray(allInputs)) allInputs = [allInputs];
 
-                    // 3. Build the payload from the correct locations
-                    const vuData = {
+                    const realtimeData = {
                         master: {
                             f1: parseFloat(masterAudio?.meterF1 || 0),
                             f2: parseFloat(masterAudio?.meterF2 || 0)
@@ -68,21 +64,25 @@ function startVuPolling(window) {
                         inputs: {}
                     };
 
-                    // 4. Loop through the MAIN inputs list to find meter data
                     for (const input of allInputs) {
-                        if (input.meterF1 !== undefined || input.meterF2 !== undefined) {
-                            vuData.inputs[input.key] = {
+                        // Check if the input has any real-time data we care about
+                        if (input.meterF1 !== undefined || input.position !== undefined) {
+                            realtimeData.inputs[input.key] = {
                                 f1: parseFloat(input.meterF1 || 0),
-                                f2: parseFloat(input.meterF2 || 0)
+                                f2: parseFloat(input.meterF2 || 0),
+                                position: parseInt(input.position || 0),
+                                duration: parseInt(input.duration || 0),
+                                state: input.state
                             };
                         }
                     }
                     
                     if (!window.isDestroyed()) {
-                        window.webContents.send('vmix-vu-data', vuData);
+                        // Using the same channel, now renamed in our minds to "realtime-data"
+                        window.webContents.send('vmix-vu-data', realtimeData);
                     }
                 } catch (e) {
-                    // console.error('Error parsing VU meter XML:', e.message);
+                    // console.error('Error parsing real-time XML:', e.message);
                 }
             });
         });

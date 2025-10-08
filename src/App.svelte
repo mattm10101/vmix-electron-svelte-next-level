@@ -72,7 +72,14 @@
 
   onMount(() => {
     initializeVmixListener();
-    fetchAllInputs();
+
+    // --- NEW FIX: Wait half a second before the initial fetch ---
+    // This gives the backend plenty of time to establish its connection.
+    setTimeout(() => {
+      addLog('Performing initial state fetch...', 'info');
+      fetchAllInputs();
+    }, 500);
+
     window.addEventListener('mousedown', handleWindowMouseDown);
 
     window.electronAPI.onVuData((data) => {

@@ -1,11 +1,10 @@
 <script>
   import { derived } from 'svelte/store';
-  import { inputs, playingInputs, inputMappings, programInput, previewInput, showModal } from './stores.js';
+  import { inputs, playingInputs, inputMappings, programInput, previewInput, showModal, vuLevels } from './stores.js';
   import { fetchAllInputs, sendCommand } from './vmix.js';
   import ListTransportControls from './ListTransportControls.svelte';
 
   let throttleTimer = null;
-
   const targetInputName = derived(inputMappings, ($mappings) => $mappings.videos);
   const videoInput = derived(
     [inputs, targetInputName],
@@ -15,18 +14,20 @@
     }
   );
 
+  $: realtimeData = $videoInput ? $vuLevels.inputs[$videoInput.key] : null;
+  $: position = realtimeData?.position || 0;
+  $: duration = realtimeData?.duration || 0;
+
   $: isPlaying = $videoInput && $playingInputs.has($videoInput.id);
   $: isMuted = $videoInput?.muted;
   $: vmixSelectedIndex = $videoInput?.selectedIndex ? $videoInput.selectedIndex - 1 : -1;
-
   $: isInPreview = $videoInput && $previewInput === $videoInput.id;
   $: isInProgram = $videoInput && $programInput === $videoInput.id;
-  
+
   function handleTrackClick(clickedIndex) {
     if (!$videoInput || isInProgram) return;
 
     const itemNumber = clickedIndex + 1;
-
     if (isInPreview) {
       sendCommand(`FUNCTION SelectIndex Input=${$videoInput.key}&Value=${itemNumber}`);
       setTimeout(() => fetchAllInputs(), 100);
@@ -41,10 +42,8 @@
 
   function handleTrackDoubleClick(clickedIndex) {
     if (!$videoInput || !isInProgram) return;
-
     const itemNumber = clickedIndex + 1;
     const trackName = $videoInput.list[clickedIndex]?.name || 'this item';
-
     showModal(`You are interrupting a live video. Jump to and play "${trackName}"?`, () => {
       sendCommand(`FUNCTION SelectIndex Input=${$videoInput.key}&Value=${itemNumber}`);
       sendCommand(`FUNCTION Play Input=${$videoInput.key}`);
@@ -84,6 +83,14 @@
     throttleTimer = setTimeout(() => { throttleTimer = null; }, 50);
     sendCommand(`FUNCTION SetVolume Input=${$videoInput.key}&Value=${uiVolume}`);
   }
+
+  function formatMilliseconds(ms) {
+    if (isNaN(ms) || ms < 0) return '00:00';
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+    const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+    return `${minutes}:${seconds}`;
+  }
 </script>
 
 <div class="videos-container">
@@ -101,6 +108,14 @@
         Input not Loaded
       {/if}
     </div>
+    
+    {#if duration > 0}
+      <div class="timer-display">
+        <span class="elapsed">{formatMilliseconds(position)}</span>
+        <span class="duration">{formatMilliseconds(duration)}</span>
+        <span class="remaining">-{formatMilliseconds(duration - position)}</span>
+      </div>
+    {/if}
     
     <div class="controls-wrapper">
       <ListTransportControls
@@ -162,14 +177,15 @@
 
   {:else}
     <div class="placeholder">
-      Video input not found. Check name in Options panel.
+      Video input not found.
+      Check name in Options panel.
     </div>
   {/if}
 </div>
 
 <style>
   .videos-container { height: 100%; display: flex; flex-direction: column; padding: 15px; }
-  .status-display, .controls-wrapper, .prod-controls-wrapper, .fader-container { margin-bottom: 12px; }
+  .status-display, .controls-wrapper, .prod-controls-wrapper, .fader-container, .timer-display { margin-bottom: 8px; }
   .source-display { margin-top: 12px; }
   .status-display { background-color: #1f1f23; border-radius: 5px; padding: 0 10px; border: 1px solid #4a4a4e; color: #eee; font-weight: bold; height: 40px; font-size: 1.25em; display: flex; align-items: center; justify-content: center; width: 100%; flex-shrink: 0; transition: all 0.2s ease-in-out; }
   .status-display.preview { background-color: #dd6b20; border-color: #ed8936; color: white; }
@@ -198,4 +214,29 @@
   .preview .track-index, .program .track-index { color: white; }
   .source-display { font-family: 'Courier New', Courier, monospace; font-size: 0.75em; color: #888; text-align: center; flex-shrink: 0; padding-top: 10px; border-top: 1px solid #3a3a3e; }
   .placeholder { color: #888; text-align: center; margin: auto; }
+
+  /* --- UPDATED: Styles for the new timer layout --- */
+  .timer-display {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9em;
+    color: white;
+    font-weight: bold;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    background: #1f1f23;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #4a4a4e;
+  }
+  .timer-display .duration {
+    text-align: center;
+  }
+  .timer-display .elapsed {
+    text-align: left;
+    color: #ccc; /* Slightly dimmer for contrast */
+  }
+  .timer-display .remaining {
+    text-align: right;
+  }
 </style>
