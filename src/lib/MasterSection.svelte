@@ -6,7 +6,7 @@
 
   export let isMuted = false;
   export let volume = 85;
-  export let level = 0; // For VU meter in next step
+  export let level = 0;
 
   let isFolded = false;
   let debounceTimer;
@@ -15,17 +15,12 @@
     isFolded = !isFolded;
   }
 
-  // Two-way binding from App.svelte updates the 'volume' prop automatically.
-  // We watch for changes to the prop to send the command.
   $: if (volume || volume === 0) {
     handleVolumeChange(volume);
   }
 
   function handleVolumeChange(newVolume) {
-    // Update the store immediately for a responsive UI feel
     masterVolume.set(newVolume);
-
-    // Debounce the command to vMix to avoid flooding
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       sendCommand(`FUNCTION SetMasterVolume Value=${newVolume}`);

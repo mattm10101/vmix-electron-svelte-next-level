@@ -4,7 +4,6 @@
   import { inputs } from './stores.js';
   export let audioInputs = [];
   
-  // State for the single collapsible section
   let isFolded = false;
   let throttleTimers = new Map();
 
@@ -14,23 +13,19 @@
 
   function handleVolumeChange(input, event) {
     const newVolume = event.target.value;
-    // Update the main inputs store immediately for responsive UI
     inputs.update(currentInputs => 
       currentInputs.map(i => i.id === input.id ? { ...i, volume: newVolume } : i)
     );
     
-    // If a throttle is active for this slider, do nothing.
     if (throttleTimers.has(input.id)) {
       return;
     }
 
-    // Otherwise, send the command immediately.
     sendCommand(`FUNCTION SetVolume Input=${input.key}&Value=${newVolume}`);
 
-    // And set a new throttle to prevent more commands for a short time.
     const timerId = setTimeout(() => {
       throttleTimers.delete(input.id);
-    }, 50); // 50ms cooldown
+    }, 50);
 
     throttleTimers.set(input.id, timerId);
   }
@@ -124,7 +119,7 @@
     width: 100%;
     padding: 10px 15px;
     font-weight: bold;
-    color: #ccc; /* Subtler color for this header */
+    color: #ccc;
     background-color: transparent;
     border: none;
     cursor: pointer;

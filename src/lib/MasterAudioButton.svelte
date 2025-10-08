@@ -16,6 +16,11 @@
 </button>
 
 <style>
+  @keyframes red-flash {
+    0%, 100% { background-color: #c53030; border-color: #f56565; box-shadow: 0 0 8px #ef4444; }
+    50% { background-color: #5d1b1b; border-color: #c53030; box-shadow: none; }
+  }
+
   .audio-button {
     width: 100%;
     padding: 10px 15px;
@@ -26,15 +31,14 @@
     font-weight: bold;
     cursor: pointer;
     transition: all 0.2s;
-    letter-spacing: 0.1em; /* Added for style */
+    letter-spacing: 0.1em;
   }
   .audio-button:hover {
     border-color: #aaa;
   }
 
   .muted {
-    background-color: #c53030;
-    border-color: #f56565;
     color: white;
+    animation: red-flash 1.5s infinite;
   }
 </style>
