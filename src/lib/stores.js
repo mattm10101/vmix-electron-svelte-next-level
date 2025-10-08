@@ -78,19 +78,12 @@ export const l3Inputs = derived(
   }
 );
 
-// Filter for the main audio mixer
+// Filter for the main audio mixer - Now includes ALL volume-capable inputs
 export const audioInputs = derived(
-  [inputs, inputMappings],
-  ([$inputs, $mappings]) => {
-    const excludedTitles = new Set([
-      $mappings.music,
-      $mappings.videos,
-      $mappings.photos,
-      $mappings.slides, // NEW: Exclude slides from audio mixer
-    ]);
+  [inputs],
+  ([$inputs]) => {
     return $inputs.filter(
-      (input) =>
-        input.muted !== undefined && !excludedTitles.has(input.shortTitle)
+      (input) => input.volume !== undefined
     );
   }
 );

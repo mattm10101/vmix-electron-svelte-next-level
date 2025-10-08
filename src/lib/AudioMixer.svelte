@@ -2,12 +2,10 @@
   import MixerSlider from './MixerSlider.svelte';
   import { sendCommand } from './vmix.js';
   import { inputs } from './stores.js';
-
   export let audioInputs = [];
   
   // State for the single collapsible section
   let isFolded = false;
-
   let throttleTimers = new Map();
 
   function toggleFold() {
@@ -16,21 +14,25 @@
 
   function handleVolumeChange(input, event) {
     const newVolume = event.target.value;
-
     // Update the main inputs store immediately for responsive UI
     inputs.update(currentInputs => 
       currentInputs.map(i => i.id === input.id ? { ...i, volume: newVolume } : i)
     );
     
-    // Throttle commands to vMix to prevent flooding
+    // If a throttle is active for this slider, do nothing.
     if (throttleTimers.has(input.id)) {
-      clearTimeout(throttleTimers.get(input.id));
+      return;
     }
 
-    throttleTimers.set(input.id, setTimeout(() => {
-      sendCommand(`FUNCTION SetVolume Input=${input.key}&Value=${newVolume}`);
+    // Otherwise, send the command immediately.
+    sendCommand(`FUNCTION SetVolume Input=${input.key}&Value=${newVolume}`);
+
+    // And set a new throttle to prevent more commands for a short time.
+    const timerId = setTimeout(() => {
       throttleTimers.delete(input.id);
-    }, 50));
+    }, 50); // 50ms cooldown
+
+    throttleTimers.set(input.id, timerId);
   }
 </script>
 
