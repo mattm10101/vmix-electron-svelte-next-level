@@ -20,6 +20,7 @@
     masterVolume,
     audioInputs,
     searchQuery,
+    vuLevels, // <-- 1. Import the new store
   } from './lib/stores.js';
   import { defaultLayout } from './lib/defaultLayout.js';
   import {
@@ -40,7 +41,7 @@
   import Music from './lib/Music.svelte';
   import Videos from './lib/Videos.svelte';
   import Photos from './lib/Photos.svelte';
-  import Slides from './lib/Slides.svelte'; // NEW: Import Slides component
+  import Slides from './lib/Slides.svelte';
   import Scripts from './lib/Scripts.svelte';
   import MarqueeBox from './lib/MarqueeBox.svelte';
   import Options from './lib/Options.svelte';
@@ -74,6 +75,11 @@
     fetchAllInputs();
     window.addEventListener('mousedown', handleWindowMouseDown);
 
+    // --- 2. Listen for VU data and update the store ---
+    window.electronAPI.onVuData((data) => {
+      vuLevels.set(data);
+    });
+
     window.electronAPI.onTogglePanelVisibility((panelId) => {
       panelStates.update((states) => {
         return {
@@ -92,6 +98,11 @@
 
     return () => window.removeEventListener('mousedown', handleWindowMouseDown);
   });
+
+  // --- 3. Reactively calculate the master VU level ---
+  $: masterVuLevel = $vuLevels.master
+    ? Math.max($vuLevels.master.f1 || 0, $vuLevels.master.f2 || 0) * 100
+    : 0;
 
   $: if ($panelStates) {
     if (Object.keys($panelStates).length > 0) {
@@ -112,7 +123,6 @@
     const key = event.key;
     const shift = event.shiftKey;
     const keyNumber = parseInt(key, 10);
-
     if (key === '~') {
       event.preventDefault();
       const currentLayout = get(panelStates);
@@ -243,8 +253,6 @@
   <BackgroundGrid />
   <MarqueeBox />
 
-  <!-- (Existing panels: transitions, audio, etc. remain here) -->
-
   {#if $panelStates['transitions']?.visible}
     <Panel id="transitions" title="Transitions" defaultState={{ x: 1050, y: 460, width: 220, height: 160, z: 1 }}>
       <Transitions onCommand={sendCommand} />
@@ -254,9 +262,9 @@
   {#if $panelStates['audio']?.visible}
     <Panel id="audio" title="Audio" defaultState={{ x: 1050, y: 20, width: 320, height: 430, z: 1 }}>
       <div class="audio-panel-layout">
-        <MasterSection isMuted={$isMasterAudioMuted} bind:volume={$masterVolume} level={0} />
+        <MasterSection isMuted={$isMasterAudioMuted} bind:volume={$masterVolume} level={masterVuLevel} />
         <hr />
-        <AudioMixer audioInputs={$audioInputs} />
+        <AudioMixer audioInputs={$audioInputs} vuInputLevels={$vuLevels.inputs} />
       </div>
     </Panel>
   {/if}
@@ -291,7 +299,6 @@
     </Panel>
   {/if}
 
-  <!-- NEW: Add the Slides panel -->
   {#if $panelStates['slides']?.visible}
     <Panel
       id="slides"
@@ -332,7 +339,7 @@
           class="search-input" 
           placeholder="Filter inputs..."
           bind:value={$searchQuery}
-          on:click|stopPropagation  
+          on:click|stopPropagation
         />
         <button
           class="panel-control"
@@ -383,7 +390,6 @@
 </div>
 
 <style>
-  /* (Existing styles for search input, etc. remain here) */
   .input-panel-header {
     display: flex;
     align-items: center;

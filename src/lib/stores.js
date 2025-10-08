@@ -12,6 +12,7 @@ export const isMasterAudioMuted = writable(false);
 export const masterVolume = writable(100);
 export const playingInputs = writable(new Set());
 export const overlay1ActiveInput = writable(0);
+export const vuLevels = writable({ master: {}, inputs: {} }); // VU Meter data
 
 // --- UI & Application State ---
 export const logMessages = writable([]);
@@ -21,7 +22,7 @@ export const inputMappings = persistentStore('inputMappings', {
   music: 'LIST - MUSIC',
   videos: 'LIST - VIDEOS',
   photos: 'Photos',
-  slides: 'SLIDES', // NEW: Added mapping for Slides
+  slides: 'SLIDES',
   lowerThirds: 'L3 - ',
 });
 export const savedDefaultLayout = persistentStore('savedDefaultLayout', null);
@@ -78,7 +79,7 @@ export const l3Inputs = derived(
   }
 );
 
-// Filter for the main audio mixer - Now includes ALL volume-capable inputs
+// Filter for the main audio mixer - Includes ALL volume-capable inputs
 export const audioInputs = derived(
   [inputs],
   ([$inputs]) => {
@@ -98,7 +99,6 @@ export function showModal(message, onConfirm) {
 }
 
 // --- Preset Management Functions ---
-// ... (rest of the file is unchanged)
 export function saveCurrentLayoutToPreset(index) {
   const currentLayout = get(panelStates);
   const layoutCopy = JSON.parse(JSON.stringify(currentLayout));

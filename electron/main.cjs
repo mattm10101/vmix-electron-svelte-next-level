@@ -2,11 +2,13 @@
 
 const { app, BrowserWindow, ipcMain, Menu } = require('electron');
 const path = require('path');
+const http = require('http'); // For VU Meter Polling
 const { XMLParser } = require('fast-xml-parser');
 const VmixConnector = require('./VmixConnector.cjs');
 
 const VMIX_HOST = '127.0.0.1';
 const VMIX_TCP_PORT = 8099;
+const VMIX_HTTP_PORT = 8088; // Port for Web API / VU Meters
 
 let mainWindow;
 const toggleablePanels = [
@@ -18,14 +20,71 @@ const toggleablePanels = [
   { id: 'music', label: 'Music Player' },
   { id: 'videos', label: 'Videos Player' },
   { id: 'photos', label: 'Photos Player' },
-  { id: 'slides', label: 'Slides Player' }, // NEW: Added Slides to menu
+  { id: 'slides', label: 'Slides Player' },
   { id: 'lowerThirds', label: 'Lower Thirds' },
   { id: 'inputOptions', label: 'Input Options' },
   { id: 'scripts', label: 'Scripts' },
   { id: 'log', label: 'Command Log' },
 ];
 
-// ... (rest of the file is unchanged)
+// --- NEW VU POLLING FUNCTION ---
+function startVuPolling(window) {
+    if (!window) return;
+    console.log('✅ Starting vMix VU Polling on port 8088...');
+
+    const parser = new XMLParser({
+        ignoreAttributes: false,
+        attributeNamePrefix: '',
+    });
+
+    setInterval(() => {
+        const req = http.get(`http://${VMIX_HOST}:${VMIX_HTTP_PORT}/api`, (res) => {
+            let data = '';
+            res.on('data', (chunk) => { data += chunk; });
+            res.on('end', () => {
+                try {
+                    const vmixObj = parser.parse(data);
+                    if (!vmixObj?.vmix?.audio) return;
+
+                    const masterAudio = vmixObj.vmix.audio.master;
+                    let inputAudio = vmixObj.vmix.audio.input || [];
+                    if (!Array.isArray(inputAudio)) inputAudio = [inputAudio];
+
+                    const vuData = {
+                        master: {
+                            f1: parseFloat(masterAudio?.F1Level || 0),
+                            f2: parseFloat(masterAudio?.F2Level || 0)
+                        },
+                        inputs: {}
+                    };
+
+                    for (const input of inputAudio) {
+                        // The 'key' attribute uniquely identifies the input
+                        vuData.inputs[input.key] = {
+                            f1: parseFloat(input.F1Level || 0),
+                            f2: parseFloat(input.F2Level || 0)
+                        };
+                    }
+                    if (!window.isDestroyed()) {
+                        window.webContents.send('vmix-vu-data', vuData);
+                    }
+                } catch (e) {
+                    console.error('Error parsing VU meter XML:', e.message);
+                }
+            });
+        });
+
+        req.on('error', (e) => {
+            // Suppress frequent ECONNREFUSED errors if vMix isn't running to keep the log clean
+            if (e.code !== 'ECONNREFUSED') {
+                console.error(`VU Polling HTTP Error: ${e.message}`);
+            }
+        });
+
+        req.end();
+    }, 100); // Poll every 100ms
+}
+
 
 const menuTemplate = [
   {
@@ -90,6 +149,9 @@ function createWindow() {
   const vmixConnector = new VmixConnector(VMIX_HOST, VMIX_TCP_PORT, mainWindow);
   vmixConnector.connect();
 
+  // --- START THE NEW VU POLLING ---
+  startVuPolling(mainWindow);
+
   ipcMain.on('to-vmix', (_, command) => {
     vmixConnector.sendCommand(command);
   });
@@ -144,7 +206,6 @@ function createWindow() {
           selectedIndex: parseInt(input.selectedIndex, 10),
           list: items,
         };
-        
         if (input.muted !== undefined) {
           processedInput.muted = String(input.muted).toLowerCase() === 'true';
         }

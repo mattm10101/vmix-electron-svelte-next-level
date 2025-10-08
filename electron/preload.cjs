@@ -18,10 +18,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateMenuState: (panelStates) => {
     ipcRenderer.send('update-menu-state', panelStates)
   },
-
-  // --- NEW: Function for the Preferences Modal ---
-  // Listens for the 'open-options-modal' message from the main process
   onOpenOptionsModal: (callback) => {
     ipcRenderer.on('open-options-modal', () => callback())
+  },
+
+  // --- NEW: Function for VU Meter data stream ---
+  onVuData: (callback) => {
+    ipcRenderer.on('vmix-vu-data', (_event, data) => callback(data));
   }
 })
