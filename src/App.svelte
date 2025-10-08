@@ -48,6 +48,7 @@
   import BackgroundGrid from './lib/BackgroundGrid.svelte';
   import Modal from './lib/Modal.svelte';
   import OptionsModal from './lib/OptionsModal.svelte';
+  import Timer from './lib/Timer.svelte'; // --- NEW ---
 
   const filteredInputs = derived(
     [inputs, visibilityOptions, inputMappings, searchQuery],
@@ -73,8 +74,6 @@
   onMount(() => {
     initializeVmixListener();
 
-    // --- NEW FIX: Wait half a second before the initial fetch ---
-    // This gives the backend plenty of time to establish its connection.
     setTimeout(() => {
       addLog('Performing initial state fetch...', 'info');
       fetchAllInputs();
@@ -267,6 +266,16 @@
         <hr />
         <AudioMixer audioInputs={$audioInputs} vuInputLevels={$vuLevels.inputs} />
       </div>
+    </Panel>
+  {/if}
+
+  {#if $panelStates['timer1']?.visible}
+    <Panel 
+      id="timer1" 
+      title={$inputMappings.timer1 || 'Timer 1'}
+      defaultState={{ x: 820, y: 630, width: 220, height: 200, z: 1 }}
+    >
+      <Timer />
     </Panel>
   {/if}
 

@@ -1,3 +1,5 @@
+// src/lib/defaultLayout.js
+
 export const defaultLayout = {
   transitions: { x: 1050, y: 460, width: 220, height: 160, z: 1, min: false, visible: true },
   audio: { x: 1050, y: 20, width: 320, height: 430, z: 1, min: false, visible: true },
@@ -6,11 +8,11 @@ export const defaultLayout = {
   music: { x: 1050, y: 840, width: 220, height: 300, z: 1, min: false, visible: true },
   videos: { x: 820, y: 840, width: 220, height: 300, z: 1, min: false, visible: true },
   photos: { x: 610, y: 840, width: 220, height: 120, z: 1, min: false, visible: true },
-  // NEW: Added Slides panel layout
   slides: { x: 380, y: 840, width: 220, height: 280, z: 1, min: false, visible: true },
   scripts: { x: 20, y: 770, width: 400, height: 200, z: 1, min: false, visible: true },
   presets: { x: 430, y: 770, width: 220, height: 200, z: 1, min: false, visible: true },
   inputs: { x: 20, y: 20, width: 1020, height: 740, z: 1, min: false, visible: true },
   log: { x: 20, y: 980, width: 1250, height: 140, z: 1, min: false, visible: true },
   options: { x: 660, y: 770, width: 380, height: 200, z: 1, min: false, visible: true },
+  timer1: { x: 820, y: 630, width: 220, height: 200, z: 1, min: false, visible: true },
 };

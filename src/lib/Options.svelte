@@ -31,10 +31,13 @@
     <label for="photos-map">Photos Player</label>
     <input type="text" id="photos-map" bind:value={$inputMappings.photos} />
   </div>
-  <!-- NEW: Added Slides Player mapping -->
   <div class="option-item">
     <label for="slides-map">Slides Player</label>
     <input type="text" id="slides-map" bind:value={$inputMappings.slides} />
+  </div>
+  <div class="option-item">
+    <label for="timer1-map">Timer 1</label>
+    <input type="text" id="timer1-map" bind:value={$inputMappings.timer1} />
   </div>
   <div class="option-item">
     <label for="l3-map">L3s Prefix</label>
@@ -74,7 +77,7 @@
 
 <style>
   .options-container { 
-    display: flex; 
+    display: flex;
     flex-direction: column; 
     height: 100%; 
     gap: 10px;
@@ -104,7 +107,7 @@
     background: #1f1f23; 
     border: 1px solid #555; 
     color: #eee; 
-    border-radius: 3px; 
+    border-radius: 3px;
     padding: 6px 8px; 
     font-family: inherit;
     text-align: right;

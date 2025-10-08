@@ -2,13 +2,13 @@
 
 const { app, BrowserWindow, ipcMain, Menu } = require('electron');
 const path = require('path');
-const http = require('http'); // For VU Meter Polling
+const http = require('http');
 const { XMLParser } = require('fast-xml-parser');
 const VmixConnector = require('./VmixConnector.cjs');
 
 const VMIX_HOST = '127.0.0.1';
 const VMIX_TCP_PORT = 8099;
-const VMIX_HTTP_PORT = 8088; // Port for Web API / VU Meters
+const VMIX_HTTP_PORT = 8088;
 
 let mainWindow;
 const toggleablePanels = [
@@ -25,9 +25,9 @@ const toggleablePanels = [
   { id: 'inputOptions', label: 'Input Options' },
   { id: 'scripts', label: 'Scripts' },
   { id: 'log', label: 'Command Log' },
+  { id: 'timer1', label: 'Timer 1' },
 ];
 
-// --- UPDATED POLLING FUNCTION ---
 function startVuPolling(window) {
     if (!window) return;
     console.log('✅ Starting vMix Real-time Polling on port 8088...');
@@ -35,6 +35,9 @@ function startVuPolling(window) {
     const parser = new XMLParser({
         ignoreAttributes: false,
         attributeNamePrefix: '',
+        textNodeName: '#text',
+        parseAttributeValue: true,
+        parseNodeValue: true
     });
 
     setInterval(() => {
@@ -65,20 +68,28 @@ function startVuPolling(window) {
                     };
 
                     for (const input of allInputs) {
-                        // Check if the input has any real-time data we care about
-                        if (input.meterF1 !== undefined || input.position !== undefined) {
-                            realtimeData.inputs[input.key] = {
+                        if (input.meterF1 !== undefined || input.position !== undefined || input.text !== undefined) {
+                            const inputData = {
                                 f1: parseFloat(input.meterF1 || 0),
                                 f2: parseFloat(input.meterF2 || 0),
                                 position: parseInt(input.position || 0),
                                 duration: parseInt(input.duration || 0),
-                                state: input.state
+                                state: input.state,
                             };
+
+                            if (input.text) {
+                                const textElements = Array.isArray(input.text) ? input.text : [input.text];
+                                const timeTextElement = textElements.find(t => t.name === 'Time.Text');
+                                if (timeTextElement) {
+                                    inputData.timerText = timeTextElement['#text'];
+                                }
+                            }
+                            
+                            realtimeData.inputs[input.key] = inputData;
                         }
                     }
                     
                     if (!window.isDestroyed()) {
-                        // Using the same channel, now renamed in our minds to "realtime-data"
                         window.webContents.send('vmix-vu-data', realtimeData);
                     }
                 } catch (e) {

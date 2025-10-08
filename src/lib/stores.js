@@ -12,7 +12,7 @@ export const isMasterAudioMuted = writable(false);
 export const masterVolume = writable(100);
 export const playingInputs = writable(new Set());
 export const overlay1ActiveInput = writable(0);
-export const vuLevels = writable({ master: {}, inputs: {} }); // VU Meter data
+export const vuLevels = writable({ master: {}, inputs: {} });
 
 // --- UI & Application State ---
 export const logMessages = writable([]);
@@ -24,6 +24,7 @@ export const inputMappings = persistentStore('inputMappings', {
   photos: 'Photos',
   slides: 'SLIDES',
   lowerThirds: 'L3 - ',
+  timer1: 'TIMER 1',
 });
 export const savedDefaultLayout = persistentStore('savedDefaultLayout', null);
 export const panelStates = persistentStore(
