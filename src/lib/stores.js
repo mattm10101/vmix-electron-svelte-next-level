@@ -15,10 +15,13 @@ export const overlay1ActiveInput = writable(0);
 
 // --- UI & Application State ---
 export const logMessages = writable([]);
+export const searchQuery = writable('');
+
 export const inputMappings = persistentStore('inputMappings', {
   music: 'LIST - MUSIC',
   videos: 'LIST - VIDEOS',
   photos: 'Photos',
+  slides: 'SLIDES', // NEW: Added mapping for Slides
   lowerThirds: 'L3 - ',
 });
 export const savedDefaultLayout = persistentStore('savedDefaultLayout', null);
@@ -83,9 +86,8 @@ export const audioInputs = derived(
       $mappings.music,
       $mappings.videos,
       $mappings.photos,
+      $mappings.slides, // NEW: Exclude slides from audio mixer
     ]);
-    // A much more reliable way to find audio-capable inputs is to check for the 'muted' attribute,
-    // as non-audio inputs like images do not have it in the XML.
     return $inputs.filter(
       (input) =>
         input.muted !== undefined && !excludedTitles.has(input.shortTitle)
@@ -103,6 +105,7 @@ export function showModal(message, onConfirm) {
 }
 
 // --- Preset Management Functions ---
+// ... (rest of the file is unchanged)
 export function saveCurrentLayoutToPreset(index) {
   const currentLayout = get(panelStates);
   const layoutCopy = JSON.parse(JSON.stringify(currentLayout));

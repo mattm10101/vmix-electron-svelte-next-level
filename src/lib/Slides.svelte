@@ -3,7 +3,7 @@
   import { inputs, playingInputs, inputMappings, programInput, previewInput } from './stores.js';
   import { sendCommand, fetchAllInputs } from './vmix.js';
 
-  // --- NEW: Local state for the jump input ---
+  // --- Local state for the jump input ---
   let jumpValue = '';
   let jumpInput;
 
@@ -22,8 +22,8 @@
   ];
 
   // --- Derived Stores ---
-  const targetInputName = derived(inputMappings, ($mappings) => $mappings.photos);
-  const photosInput = derived(
+  const targetInputName = derived(inputMappings, ($mappings) => $mappings.slides);
+  const slidesInput = derived(
     [inputs, targetInputName],
     ([$inputs, $targetInputName]) => {
       if (!$targetInputName) return null;
@@ -31,18 +31,18 @@
     }
   );
   const isPlaying = derived(
-    [photosInput, playingInputs],
-    ([$photosInput, $playingInputs]) => {
-      if (!$photosInput) return false;
-      return $playingInputs.has($photosInput.id);
+    [slidesInput, playingInputs],
+    ([$slidesInput, $playingInputs]) => {
+      if (!$slidesInput) return false;
+      return $playingInputs.has($slidesInput.id);
     }
   );
-  $: isInPreview = $photosInput && $previewInput === $photosInput.id;
-  $: isInProgram = $photosInput && $programInput === $photosInput.id;
+  $: isInPreview = $slidesInput && $previewInput === $slidesInput.id;
+  $: isInProgram = $slidesInput && $programInput === $slidesInput.id;
 
   // --- vMix Command Functions ---
   function handleTransport(command) {
-    const input = get(photosInput);
+    const input = get(slidesInput);
     if (input) {
       sendCommand(`FUNCTION ${command} Input=${input.key}`);
     }
@@ -51,21 +51,20 @@
   function handleTransition(transitionType) {
     sendCommand(`FUNCTION ${transitionType}`);
   }
-
+  
   function sendToPreview() {
-    const input = get(photosInput);
+    const input = get(slidesInput);
     if (input) {
       sendCommand(`FUNCTION PreviewInput Input=${input.key}`);
     }
   }
 
-  // NEW: Function to handle jumping to a specific index
-  function handleJumpToIndex(event) {
+  function handleJumpToSlide(event) {
     if (event.key !== 'Enter') return;
-    const input = get(photosInput);
-    const indexNumber = parseInt(jumpValue, 10);
-    if (input && !isNaN(indexNumber) && indexNumber > 0) {
-      sendCommand(`FUNCTION SelectIndex Input=${input.key}&Value=${indexNumber}`);
+    const input = get(slidesInput);
+    const slideNumber = parseInt(jumpValue, 10);
+    if (input && !isNaN(slideNumber) && slideNumber > 0) {
+      sendCommand(`FUNCTION SelectIndex Input=${input.key}&Value=${slideNumber}`);
       jumpValue = '';
       jumpInput.blur();
       setTimeout(() => fetchAllInputs(), 100);
@@ -73,37 +72,37 @@
   }
 
   function setTransitionDuration() {
-    const input = get(photosInput);
+    const input = get(slidesInput);
     if (input) {
       sendCommand(`FUNCTION SetPictureTransition Input=${input.key}&Value=${transitionDuration}`);
     }
   }
 
   function setPictureEffect() {
-    const input = get(photosInput);
+    const input = get(slidesInput);
     if (input) {
       sendCommand(`FUNCTION SetPictureEffect Input=${input.key}&Value=${effect}`);
     }
   }
 
   function setPictureEffectDuration() {
-    const input = get(photosInput);
+    const input = get(slidesInput);
     if (input) {
       sendCommand(`FUNCTION SetPictureEffectDuration Input=${input.key}&Value=${effectDuration}`);
     }
   }
 </script>
 
-<div class="photos-container">
-  {#if $photosInput}
+<div class="slides-container">
+  {#if $slidesInput}
     <button
       class="status-display"
       class:program={isInProgram}
       class:preview={isInPreview}
-      class:is-clickable={!!$photosInput}
+      class:is-clickable={!!$slidesInput}
       on:click={sendToPreview}
-      title="Click to send Photos to Preview"
-      disabled={!$photosInput}
+      title="Click to send Slides to Preview"
+      disabled={!$slidesInput}
     >
       {#if isInProgram}
         Input is Active
@@ -138,24 +137,24 @@
 
     <div class="settings-row">
       <div class="setting-item">
-        <label for="photo-transition-duration">Transition (s)</label>
-        <select id="photo-transition-duration" bind:value={transitionDuration} on:change={setTransitionDuration}>
+        <label for="slide-transition-duration">Transition (s)</label>
+        <select id="slide-transition-duration" bind:value={transitionDuration} on:change={setTransitionDuration}>
           {#each durationOptions as dur}
             <option value={dur}>{dur}</option>
           {/each}
         </select>
       </div>
       <div class="setting-item">
-        <label for="photo-effect">Effect</label>
-        <select id="photo-effect" bind:value={effect} on:change={setPictureEffect}>
+        <label for="slide-effect">Effect</label>
+        <select id="slide-effect" bind:value={effect} on:change={setPictureEffect}>
           {#each effectOptions as eff}
             <option value={eff}>{eff}</option>
           {/each}
         </select>
       </div>
       <div class="setting-item">
-        <label for="photo-effect-duration">Effect Dur. (ms)</label>
-        <select id="photo-effect-duration" bind:value={effectDuration} on:change={setPictureEffectDuration}>
+        <label for="slide-effect-duration">Effect Dur. (ms)</label>
+        <select id="slide-effect-duration" bind:value={effectDuration} on:change={setPictureEffectDuration}>
           {#each effectDurationOptions as dur}
             <option value={dur}>{dur}</option>
           {/each}
@@ -163,31 +162,30 @@
       </div>
     </div>
 
-    <!-- NEW: Jump to Index Row -->
     <div class="jump-row">
-      <label for="jump-input-photos">Jump to index</label>
+      <label for="jump-input">Jump to slide</label>
       <input 
         type="text" 
-        id="jump-input-photos" 
+        id="jump-input" 
         class="jump-input"
         bind:this={jumpInput}
         bind:value={jumpValue}
-        on:keydown={handleJumpToIndex}
-        placeholder={$photosInput.selectedIndex || '#'}
+        on:keydown={handleJumpToSlide}
+        placeholder={$slidesInput.selectedIndex || '#'}
       >
     </div>
 
     <div class="source-display">
-      SOURCE: {$photosInput?.shortTitle || 'Not Found'}
+      SOURCE: {$slidesInput?.shortTitle || 'Not Found'}
     </div>
 
   {:else}
-    <div class="placeholder">Input "{get(inputMappings).photos}" not found.</div>
+    <div class="placeholder">Input "{get(inputMappings).slides}" not found.</div>
   {/if}
 </div>
 
 <style>
-  .photos-container {
+  .slides-container {
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -314,7 +312,6 @@
     border-color: #14ffec;
   }
   
-  /* NEW STYLES */
   .jump-row {
     display: flex;
     align-items: center;

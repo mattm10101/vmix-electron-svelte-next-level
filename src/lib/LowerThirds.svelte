@@ -1,12 +1,10 @@
 <script>
   import { get } from 'svelte/store';
   import { l3Inputs, overlay1ActiveInput, inputMappings } from './stores.js';
-
   export let onCommand = (detail) => {};
 
   function toggleOverlay(inputId) {
     const currentlyActiveId = get(overlay1ActiveInput);
-
     if (currentlyActiveId === inputId) {
       onCommand(`FUNCTION OverlayInput1Out`);
     } else {
@@ -41,7 +39,6 @@
     gap: 8px;
     height: 100%;
     overflow-y: auto;
-    /* UPDATED: Changed padding to apply to all sides for breathing room at the top */
     padding: 15px;
   }
   .l3-btn {

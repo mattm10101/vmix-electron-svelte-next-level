@@ -18,11 +18,14 @@ const toggleablePanels = [
   { id: 'music', label: 'Music Player' },
   { id: 'videos', label: 'Videos Player' },
   { id: 'photos', label: 'Photos Player' },
+  { id: 'slides', label: 'Slides Player' }, // NEW: Added Slides to menu
   { id: 'lowerThirds', label: 'Lower Thirds' },
   { id: 'inputOptions', label: 'Input Options' },
   { id: 'scripts', label: 'Scripts' },
   { id: 'log', label: 'Command Log' },
 ];
+
+// ... (rest of the file is unchanged)
 
 const menuTemplate = [
   {
@@ -115,7 +118,6 @@ function createWindow() {
       let inputs = vmixObj.vmix.inputs.input;
       if (!Array.isArray(inputs)) inputs = [inputs];
 
-      // --- THIS SECTION IS NOW FIXED ---
       return inputs.map((input) => {
         let items = [];
         if (input.list && input.list.item) {
@@ -143,9 +145,6 @@ function createWindow() {
           list: items,
         };
         
-        // ** THE FIX IS HERE **
-        // Only add 'muted' and 'volume' properties if they exist on the input from the XML.
-        // This prevents non-audio inputs from being mistaken for audio-capable ones.
         if (input.muted !== undefined) {
           processedInput.muted = String(input.muted).toLowerCase() === 'true';
         }

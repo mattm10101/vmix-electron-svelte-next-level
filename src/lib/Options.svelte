@@ -31,6 +31,11 @@
     <label for="photos-map">Photos Player</label>
     <input type="text" id="photos-map" bind:value={$inputMappings.photos} />
   </div>
+  <!-- NEW: Added Slides Player mapping -->
+  <div class="option-item">
+    <label for="slides-map">Slides Player</label>
+    <input type="text" id="slides-map" bind:value={$inputMappings.slides} />
+  </div>
   <div class="option-item">
     <label for="l3-map">L3s Prefix</label>
     <input type="text" id="l3-map" bind:value={$inputMappings.lowerThirds} />

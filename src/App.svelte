@@ -16,10 +16,10 @@
     savedDefaultLayout,
     inputMappings,
     optionsModalOpen,
-    // UPDATED: Import real stores for audio
     isMasterAudioMuted,
     masterVolume,
     audioInputs,
+    searchQuery,
   } from './lib/stores.js';
   import { defaultLayout } from './lib/defaultLayout.js';
   import {
@@ -40,6 +40,7 @@
   import Music from './lib/Music.svelte';
   import Videos from './lib/Videos.svelte';
   import Photos from './lib/Photos.svelte';
+  import Slides from './lib/Slides.svelte'; // NEW: Import Slides component
   import Scripts from './lib/Scripts.svelte';
   import MarqueeBox from './lib/MarqueeBox.svelte';
   import Options from './lib/Options.svelte';
@@ -47,22 +48,30 @@
   import Modal from './lib/Modal.svelte';
   import OptionsModal from './lib/OptionsModal.svelte';
 
-  // REMOVED: All mock data has been deleted from this file.
-
   const filteredInputs = derived(
-    [inputs, visibilityOptions, inputMappings],
-    ([$inputs, $opts, $mappings]) => {
+    [inputs, visibilityOptions, inputMappings, searchQuery],
+    ([$inputs, $opts, $mappings, $searchQuery]) => {
       const l3Prefix = $mappings.lowerThirds;
+      let tempInputs = $inputs;
+
       if (!$opts.showL3s && l3Prefix) {
-        return $inputs.filter((input) => !input.title.startsWith(l3Prefix));
+        tempInputs = tempInputs.filter((input) => !input.title.startsWith(l3Prefix));
       }
-      return $inputs;
+
+      if ($searchQuery.trim() !== '') {
+        const lowerCaseQuery = $searchQuery.toLowerCase();
+        tempInputs = tempInputs.filter(input => 
+          input.title.toLowerCase().includes(lowerCaseQuery)
+        );
+      }
+
+      return tempInputs;
     }
   );
 
   onMount(() => {
     initializeVmixListener();
-    fetchAllInputs(); // This will populate the 'inputs' store with real data
+    fetchAllInputs();
     window.addEventListener('mousedown', handleWindowMouseDown);
 
     window.electronAPI.onTogglePanelVisibility((panelId) => {
@@ -234,28 +243,18 @@
   <BackgroundGrid />
   <MarqueeBox />
 
+  <!-- (Existing panels: transitions, audio, etc. remain here) -->
+
   {#if $panelStates['transitions']?.visible}
-    <Panel
-      id="transitions"
-      title="Transitions"
-      defaultState={{ x: 1050, y: 460, width: 220, height: 160, z: 1 }}
-    >
+    <Panel id="transitions" title="Transitions" defaultState={{ x: 1050, y: 460, width: 220, height: 160, z: 1 }}>
       <Transitions onCommand={sendCommand} />
     </Panel>
   {/if}
 
   {#if $panelStates['audio']?.visible}
-    <Panel
-      id="audio"
-      title="Audio"
-      defaultState={{ x: 1050, y: 20, width: 320, height: 430, z: 1 }}
-    >
+    <Panel id="audio" title="Audio" defaultState={{ x: 1050, y: 20, width: 320, height: 430, z: 1 }}>
       <div class="audio-panel-layout">
-        <MasterSection
-          isMuted={$isMasterAudioMuted}
-          bind:volume={$masterVolume}
-          level={0}
-        />
+        <MasterSection isMuted={$isMasterAudioMuted} bind:volume={$masterVolume} level={0} />
         <hr />
         <AudioMixer audioInputs={$audioInputs} />
       </div>
@@ -263,88 +262,61 @@
   {/if}
 
   {#if $panelStates['inputOptions']?.visible}
-    <Panel
-      id="inputOptions"
-      title="Input Options"
-      defaultState={{ x: 1050, y: 190, width: 220, height: 260, z: 1 }}
-    >
+    <Panel id="inputOptions" title="Input Options" defaultState={{ x: 1050, y: 190, width: 220, height: 260, z: 1 }}>
       <InputOptions />
     </Panel>
   {/if}
 
   {#if $panelStates['lowerThirds']?.visible}
-    <Panel
-      id="lowerThirds"
-      title="Lower Thirds"
-      defaultState={{ x: 1050, y: 630, width: 220, height: 200, z: 1 }}
-    >
+    <Panel id="lowerThirds" title="Lower Thirds" defaultState={{ x: 1050, y: 630, width: 220, height: 200, z: 1 }}>
       <LowerThirds onCommand={sendCommand} />
     </Panel>
   {/if}
 
   {#if $panelStates['music']?.visible}
-    <Panel
-      id="music"
-      title="Music"
-      defaultState={{ x: 1050, y: 840, width: 220, height: 300, z: 1 }}
-    >
+    <Panel id="music" title="Music" defaultState={{ x: 1050, y: 840, width: 220, height: 300, z: 1 }}>
       <Music />
     </Panel>
   {/if}
 
   {#if $panelStates['videos']?.visible}
-    <Panel
-      id="videos"
-      title="Videos"
-      defaultState={{ x: 820, y: 840, width: 220, height: 300, z: 1 }}
-    >
+    <Panel id="videos" title="Videos" defaultState={{ x: 820, y: 840, width: 220, height: 300, z: 1 }}>
       <Videos />
     </Panel>
   {/if}
 
   {#if $panelStates['photos']?.visible}
-    <Panel
-      id="photos"
-      title="Photos"
-      defaultState={{ x: 610, y: 840, width: 220, height: 120, z: 1 }}
-    >
+    <Panel id="photos" title="Photos" defaultState={{ x: 610, y: 840, width: 220, height: 120, z: 1 }}>
       <Photos />
     </Panel>
   {/if}
 
-  {#if $panelStates['options']?.visible}
+  <!-- NEW: Add the Slides panel -->
+  {#if $panelStates['slides']?.visible}
     <Panel
-      id="options"
-      title="Options"
-      defaultState={{ x: 660, y: 770, width: 380, height: 200, z: 1 }}
+      id="slides"
+      title="Slides"
+      defaultState={{ x: 380, y: 840, width: 220, height: 280, z: 1 }}
     >
+      <Slides />
+    </Panel>
+  {/if}
+
+  {#if $panelStates['options']?.visible}
+    <Panel id="options" title="Options" defaultState={{ x: 660, y: 770, width: 380, height: 200, z: 1 }}>
       <Options />
     </Panel>
   {/if}
 
   {#if $panelStates['scripts']?.visible}
-    <Panel
-      id="scripts"
-      title="Scripts"
-      defaultState={{ x: 20, y: 770, width: 400, height: 200, z: 1 }}
-    >
+    <Panel id="scripts" title="Scripts" defaultState={{ x: 20, y: 770, width: 400, height: 200, z: 1 }}>
       <Scripts onCommand={sendCommand} />
     </Panel>
   {/if}
 
   {#if $panelStates['presets']?.visible}
-    <Panel
-      id="presets"
-      title="Presets"
-      defaultState={{ x: 430, y: 770, width: 220, height: 200, z: 1 }}
-    >
-      <Presets
-        presets={$layoutPresets}
-        onSnapshot={handleSnapshot}
-        onApply={handleApplyPreset}
-        onDelete={handleDeletePreset}
-        onRename={handleRenamePreset}
-      />
+    <Panel id="presets" title="Presets" defaultState={{ x: 430, y: 770, width: 220, height: 200, z: 1 }}>
+      <Presets presets={$layoutPresets} onSnapshot={handleSnapshot} onApply={handleApplyPreset} onDelete={handleDeletePreset} onRename={handleRenamePreset} />
     </Panel>
   {/if}
 
@@ -354,7 +326,14 @@
       title="Inputs"
       defaultState={{ x: 20, y: 20, width: 1020, height: 740, z: 1 }}
     >
-      <div slot="header-controls">
+      <div slot="header-controls" class="input-panel-header">
+        <input 
+          type="search" 
+          class="search-input" 
+          placeholder="Filter inputs..."
+          bind:value={$searchQuery}
+          on:click|stopPropagation  
+        />
         <button
           class="panel-control"
           on:click={fetchAllInputs}
@@ -367,7 +346,7 @@
           <div
             class="input-grid"
             class:hide-numbers={!$visibilityOptions.showNumbers}
-            style="--grid-gap: {$gridOptions.gapSize}px;"
+            style="--grid-gap: 12px;"
           >
             {#each $filteredInputs as input (input.id)}
               <InputButton
@@ -375,8 +354,7 @@
                 name={input.shortTitle}
                 number={input.id}
                 isProgram={input.id === $programInput}
-                isPreview={$visibilityOptions.showPreviewLed &&
-                  input.id === $previewInput}
+                isPreview={$visibilityOptions.showPreviewLed && input.id === $previewInput}
                 onCommand={sendCommand}
               />
             {/each}
@@ -405,6 +383,30 @@
 </div>
 
 <style>
+  /* (Existing styles for search input, etc. remain here) */
+  .input-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-grow: 1;
+    margin-right: 10px;
+  }
+
+  .search-input {
+    width: 100%;
+    background-color: var(--color-metal, #1f1f23);
+    border: 1px solid #4a4a4e;
+    color: #eee;
+    border-radius: 5px;
+    padding: 4px 8px;
+    font-family: inherit;
+  }
+
+  .search-input:focus {
+    outline: none;
+    border-color: var(--color-accent, #14ffec);
+  }
+
   .inputs-panel-content {
     padding: 15px;
     height: 100%;
@@ -428,13 +430,12 @@
     color: #666;
   }
 
-  /* UPDATED STYLES FOR THE AUDIO PANEL */
   :global(.audio-panel-layout) {
     display: flex;
     flex-direction: column;
     gap: 15px;
     padding: 15px;
-    padding-top: 10px; /* Reduced top padding */
+    padding-top: 10px;
     height: 100%;
     box-sizing: border-box;
   }
