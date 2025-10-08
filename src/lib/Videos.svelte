@@ -1,4 +1,5 @@
 <script>
+  import { get } from 'svelte/store';
   import { derived } from 'svelte/store';
   import { inputs, playingInputs, inputMappings, programInput, previewInput, showModal, vuLevels } from './stores.js';
   import { fetchAllInputs, sendCommand } from './vmix.js';
@@ -24,20 +25,35 @@
   $: isInPreview = $videoInput && $previewInput === $videoInput.id;
   $: isInProgram = $videoInput && $programInput === $videoInput.id;
 
+  // --- UPDATED: Hybrid "Optimistic Sync" Logic ---
   function handleTrackClick(clickedIndex) {
     if (!$videoInput || isInProgram) return;
 
     const itemNumber = clickedIndex + 1;
-    if (isInPreview) {
-      sendCommand(`FUNCTION SelectIndex Input=${$videoInput.key}&Value=${itemNumber}`);
-      setTimeout(() => fetchAllInputs(), 100);
-    } else {
-      sendCommand(`FUNCTION SelectIndex Input=${$videoInput.key}&Value=${itemNumber}`);
-      setTimeout(() => {
-        sendCommand(`FUNCTION PreviewInput Input=${$videoInput.key}`);
-        setTimeout(() => fetchAllInputs(), 100);
-      }, 50);
+    const currentlyInPreview = get(previewInput) === $videoInput.id;
+
+    // 1. OPTIMISTIC: Update UI instantly for a snappy feel.
+    inputs.update(allInputs => 
+        allInputs.map(input => 
+            input.id === $videoInput.id ? { ...input, selectedIndex: itemNumber } : input
+        )
+    );
+    if (!currentlyInPreview) {
+        previewInput.set($videoInput.id);
     }
+
+    // 2. OFFICIAL: Send commands to vMix.
+    sendCommand(`FUNCTION SelectIndex Input=${$videoInput.key}&Value=${itemNumber}`);
+    if (!currentlyInPreview) {
+        setTimeout(() => {
+            sendCommand(`FUNCTION PreviewInput Input=${$videoInput.key}`);
+        }, 20);
+    }
+
+    // 3. RE-SYNC: Because 'SelectIndex' does not trigger an ACTS message,
+    // we manually refresh the state to get the authoritative confirmation.
+    // Our debounced fetchAllInputs function will handle this efficiently.
+    setTimeout(() => fetchAllInputs(), 150);
   }
 
   function handleTrackDoubleClick(clickedIndex) {
@@ -47,25 +63,17 @@
     showModal(`You are interrupting a live video. Jump to and play "${trackName}"?`, () => {
       sendCommand(`FUNCTION SelectIndex Input=${$videoInput.key}&Value=${itemNumber}`);
       sendCommand(`FUNCTION Play Input=${$videoInput.key}`);
-      setTimeout(() => {
-        fetchAllInputs();
-      }, 100);
+      setTimeout(() => fetchAllInputs(), 100);
     });
   }
   
   function handlePreview() {
     if (!$videoInput) return;
     sendCommand(`FUNCTION PreviewInput Input=${$videoInput.key}`);
-    setTimeout(() => fetchAllInputs(), 100);
-  }
-
-  function handleTake() {
-    if (!$videoInput) return;
-    sendCommand('FUNCTION Cut');
   }
 
   function handleTransition(funcName) {
-    sendCommand(funcName);
+    sendCommand(`FUNCTION ${funcName}`);
   }
   
   function handleTransportCommand(event) {
@@ -126,7 +134,7 @@
       <button
         class="control-btn mute-btn"
         class:muted={isMuted}
-        on:click={() => { sendCommand(`FUNCTION Audio Input=${$videoInput.key}`); setTimeout(() => fetchAllInputs(), 100); }}
+        on:click={() => { sendCommand(`FUNCTION Audio Input=${$videoInput.key}`); }}
         title="Toggle Mute"
       >
         {#if isMuted}
@@ -215,7 +223,6 @@
   .source-display { font-family: 'Courier New', Courier, monospace; font-size: 0.75em; color: #888; text-align: center; flex-shrink: 0; padding-top: 10px; border-top: 1px solid #3a3a3e; }
   .placeholder { color: #888; text-align: center; margin: auto; }
 
-  /* --- UPDATED: Styles for the new timer layout --- */
   .timer-display {
     font-family: 'Courier New', Courier, monospace;
     font-size: 0.9em;
@@ -234,7 +241,7 @@
   }
   .timer-display .elapsed {
     text-align: left;
-    color: #ccc; /* Slightly dimmer for contrast */
+    color: #ccc;
   }
   .timer-display .remaining {
     text-align: right;
