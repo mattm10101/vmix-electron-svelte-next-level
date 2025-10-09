@@ -1,5 +1,8 @@
 <script>
-  import { gridOptions, inputMappings } from './stores.js';
+  import { gridOptions, inputMappings, transitionSettings } from './stores.js';
+
+  // --- NEW: Data for transition speed options ---
+  const speedOptions = [150, 300, 450, 600, 750, 1000, 1500];
 
   function setSnapSize(size) {
     gridOptions.update((opts) => ({ ...opts, snapSize: size }));
@@ -19,6 +22,7 @@
 </script>
 
 <div class="options-container">
+  <!-- Input Mappings Section -->
   <div class="option-item">
     <label for="music-map">Music Player</label>
     <input type="text" id="music-map" bind:value={$inputMappings.music} />
@@ -43,9 +47,31 @@
     <label for="l3-map">L3s Prefix</label>
     <input type="text" id="l3-map" bind:value={$inputMappings.lowerThirds} />
   </div>
+  
+  <hr/>
+
+  <!-- --- NEW: Layout Transition Settings --- -->
+  <div class="option-item">
+    <span class="label">Change Layouts</span>
+    <div class="radio-group">
+      <label class:active={$transitionSettings.style === 'cut'}><input type="radio" bind:group={$transitionSettings.style} value="cut"> Cut</label>
+      <label class:active={$transitionSettings.style === 'merge'}><input type="radio" bind:group={$transitionSettings.style} value="merge"> Merge</label>
+    </div>
+  </div>
+  {#if $transitionSettings.style === 'merge'}
+    <div class="option-item">
+      <span class="label">Merge Speed</span>
+      <select class="speed-select" bind:value={$transitionSettings.duration}>
+        {#each speedOptions as speed}
+          <option value={speed}>{speed} ms</option>
+        {/each}
+      </select>
+    </div>
+  {/if}
 
   <hr/>
 
+  <!-- Visual Grid Section -->
   <div class="option-item">
     <span class="label">Visual Grid</span>
     <button class="toggle-btn" class:active={$gridOptions.show} on:click={toggleGrid}>
@@ -76,46 +102,21 @@
 </div>
 
 <style>
-  .options-container { 
-    display: flex;
-    flex-direction: column; 
-    height: 100%; 
-    gap: 10px;
-    overflow-y: auto;
-    padding: 15px;
-    box-sizing: border-box;
-  }
-  hr {
-    border-color: #3c3c3c;
-    width: 100%;
-    margin: 5px 0;
-  }
-  .option-item { 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    background: #2a2a2e; 
-    padding: 12px; 
-    border-radius: 5px;
-    flex-shrink: 0;
-  }
-  .option-item label, .label { 
-    color: #ccc; 
-    font-weight: bold;
-  }
-  .option-item input { 
-    background: #1f1f23; 
-    border: 1px solid #555; 
-    color: #eee; 
-    border-radius: 3px;
-    padding: 6px 8px; 
-    font-family: inherit;
-    text-align: right;
-    width: 50%;
-  }
+  .options-container { display: flex; flex-direction: column; height: 100%; gap: 10px; overflow-y: auto; padding: 15px; box-sizing: border-box; }
+  hr { border-color: #3c3c3c; width: 100%; margin: 5px 0; }
+  .option-item { display: flex; justify-content: space-between; align-items: center; background: #2a2a2e; padding: 12px; border-radius: 5px; flex-shrink: 0; }
+  .option-item label, .label { color: #ccc; font-weight: bold; }
+  .option-item input[type="text"] { background: #1f1f23; border: 1px solid #555; color: #eee; border-radius: 3px; padding: 6px 8px; font-family: inherit; text-align: right; width: 50%; }
   .option-item input:focus { outline: none; border-color: #14ffec; }
   .button-group { display: flex; gap: 5px; background: #1f1f23; border-radius: 5px; padding: 4px; }
   .button-group button, .toggle-btn { background: #3f3f46; border: 1px solid #555; color: #eee; padding: 6px 12px; border-radius: 3px; cursor: pointer; transition: all 0.2s; min-width: 40px; text-align: center; }
   .button-group button:hover, .toggle-btn:hover { background: #555; }
   .button-group button.active, .toggle-btn.active { background-color: #14ffec; color: #1f1f23; font-weight: bold; }
+
+  /* --- NEW STYLES --- */
+  .radio-group { display: flex; background: #1f1f23; border-radius: 5px; padding: 4px; }
+  .radio-group label { padding: 6px 12px; border-radius: 3px; cursor: pointer; transition: all 0.2s; color: #eee; }
+  .radio-group input { display: none; }
+  .radio-group label.active { background-color: #14ffec; color: #1f1f23; font-weight: bold; }
+  .speed-select { background: #1f1f23; border: 1px solid #555; color: #eee; border-radius: 3px; padding: 6px 8px; font-family: inherit; }
 </style>

@@ -18,6 +18,12 @@ export const vuLevels = writable({ master: {}, inputs: {} });
 export const logMessages = writable([]);
 export const searchQuery = writable('');
 
+// --- NEW: Store for layout transition settings ---
+export const transitionSettings = persistentStore('transitionSettings', {
+  style: 'merge', // 'cut' or 'merge'
+  duration: 450,  // ms
+});
+
 export const inputMappings = persistentStore('inputMappings', {
   music: 'LIST - MUSIC',
   videos: 'LIST - VIDEOS',
@@ -69,8 +75,6 @@ export const modalStore = writable({
 export const optionsModalOpen = writable(false);
 
 // --- Derived Stores ---
-
-// Filter for Lower Thirds
 export const l3Inputs = derived(
   [inputs, inputMappings],
   ([$inputs, $mappings]) => {
@@ -81,7 +85,6 @@ export const l3Inputs = derived(
   }
 );
 
-// Filter for the main audio mixer - Includes ALL volume-capable inputs
 export const audioInputs = derived(
   [inputs],
   ([$inputs]) => {

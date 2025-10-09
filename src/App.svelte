@@ -21,6 +21,7 @@
     audioInputs,
     searchQuery,
     vuLevels,
+    transitionSettings,
   } from './lib/stores.js';
   import { defaultLayout } from './lib/defaultLayout.js';
   import {
@@ -96,27 +97,14 @@
     }, 500);
 
     window.addEventListener('mousedown', handleWindowMouseDown);
-
-    window.electronAPI.onVuData((data) => {
-      vuLevels.set(data);
-    });
-
+    window.electronAPI.onVuData((data) => { vuLevels.set(data); });
     window.electronAPI.onTogglePanelVisibility((panelId) => {
-      panelStates.update((states) => {
-        return {
-          ...states,
-          [panelId]: {
-            ...states[panelId],
-            visible: !states[panelId]?.visible,
-          },
-        };
-      });
+      panelStates.update((states) => ({
+        ...states,
+        [panelId]: { ...states[panelId], visible: !states[panelId]?.visible },
+      }));
     });
-
-    window.electronAPI.onOpenOptionsModal(() => {
-      optionsModalOpen.set(true);
-    });
-
+    window.electronAPI.onOpenOptionsModal(() => { optionsModalOpen.set(true); });
     return () => window.removeEventListener('mousedown', handleWindowMouseDown);
   });
 
@@ -129,6 +117,79 @@
   const BASE_SEARCH_WIDTH = 150;
   const PER_CHAR_WIDTH = 9;
   $: searchInputWidth = BASE_SEARCH_WIDTH + ($searchQuery.length * PER_CHAR_WIDTH);
+
+  // --- NEW: The Animation Engine ---
+  let animationFrameId;
+  function animateLayoutTransition(targetLayout) {
+    const settings = get(transitionSettings);
+    if (settings.style === 'cut' || settings.duration <= 0) {
+      panelStates.set(targetLayout);
+      return;
+    }
+
+    cancelAnimationFrame(animationFrameId);
+
+    const startLayout = get(panelStates);
+    const duration = settings.duration;
+    let startTime = null;
+
+    // The "Math Equation": an ease-in-out function
+    const easeInOutQuad = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+    const tick = (timestamp) => {
+      if (!startTime) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const easedProgress = easeInOutQuad(progress);
+
+      const nextFrameState = {};
+      const allPanelIds = new Set([...Object.keys(startLayout), ...Object.keys(targetLayout)]);
+
+      allPanelIds.forEach(id => {
+        const startState = startLayout[id];
+        const targetState = targetLayout[id];
+
+        // For now, we only animate panels that exist in both layouts.
+        // We will add fade-in/out logic in Phase 2.
+        if (startState && targetState) {
+          nextFrameState[id] = {
+            ...startState,
+            x: startState.x + (targetState.x - startState.x) * easedProgress,
+            y: startState.y + (targetState.y - startState.y) * easedProgress,
+            width: startState.width + (targetState.width - startState.width) * easedProgress,
+            height: startState.height + (targetState.height - startState.height) * easedProgress,
+            visible: targetState.visible,
+            min: targetState.min,
+          };
+        } else if (targetState) {
+           // If panel only exists in target, show it instantly for now.
+           nextFrameState[id] = targetState;
+        }
+      });
+      
+      panelStates.set(nextFrameState);
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(tick);
+      } else {
+        // Final state sync to ensure perfect alignment
+        panelStates.set(targetLayout);
+      }
+    };
+
+    animationFrameId = requestAnimationFrame(tick);
+  }
+
+  // --- UPDATED: All preset functions now use the new animation engine ---
+  function handleApplyPreset(layout) {
+    animateLayoutTransition(JSON.parse(JSON.stringify(layout)));
+  }
+
+  function applyDefaultLayout() {
+    const layoutToApply = get(savedDefaultLayout) || defaultLayout;
+    animateLayoutTransition(layoutToApply);
+    addLog('Default layout applied.', 'info');
+  }
 
   function handleKeydown(event) {
     const target = event.target;
@@ -245,9 +306,6 @@
       { id: Date.now(), name: presetName, layout: layoutCopy },
     ]);
   }
-  function handleApplyPreset(layout) {
-    panelStates.set(JSON.parse(JSON.stringify(layout)));
-  }
   function handleDeletePreset(idToDelete) {
     layoutPresets.update((presets) => presets.filter((p) => p?.id !== idToDelete));
   }
@@ -255,11 +313,6 @@
     layoutPresets.update((presets) =>
       presets.map((p) => (p?.id === id ? { ...p, name: newName } : p))
     );
-  }
-  function applyDefaultLayout() {
-    const layoutToApply = get(savedDefaultLayout) || defaultLayout;
-    handleApplyPreset(layoutToApply);
-    addLog('Default layout applied.', 'info');
   }
 </script>
 
