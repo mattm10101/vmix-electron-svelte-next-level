@@ -48,23 +48,39 @@
   import BackgroundGrid from './lib/BackgroundGrid.svelte';
   import Modal from './lib/Modal.svelte';
   import OptionsModal from './lib/OptionsModal.svelte';
-  import Timer from './lib/Timer.svelte'; // --- NEW ---
+  import Timer from './lib/Timer.svelte';
 
   const filteredInputs = derived(
     [inputs, visibilityOptions, inputMappings, searchQuery],
     ([$inputs, $opts, $mappings, $searchQuery]) => {
+      let tempInputs = [...$inputs];
       const l3Prefix = $mappings.lowerThirds;
-      let tempInputs = $inputs;
 
       if (!$opts.showL3s && l3Prefix) {
         tempInputs = tempInputs.filter((input) => !input.title.startsWith(l3Prefix));
       }
+      
+      const trimmedQuery = $searchQuery.trim();
+      if (trimmedQuery !== '') {
+        const lowerCaseTitle = (input) => input.title.toLowerCase();
 
-      if ($searchQuery.trim() !== '') {
-        const lowerCaseQuery = $searchQuery.toLowerCase();
-        tempInputs = tempInputs.filter(input => 
-          input.title.toLowerCase().includes(lowerCaseQuery)
-        );
+        if (trimmedQuery.includes(' | ')) {
+          const searchTerms = trimmedQuery
+            .split(' | ')
+            .map(term => term.trim().toLowerCase())
+            .filter(term => term !== '');
+
+          if (searchTerms.length > 0) {
+            tempInputs = tempInputs.filter(input => 
+              searchTerms.some(term => lowerCaseTitle(input).includes(term))
+            );
+          }
+        } else {
+          const lowerCaseQuery = trimmedQuery.toLowerCase();
+          tempInputs = tempInputs.filter(input => 
+            lowerCaseTitle(input).includes(lowerCaseQuery)
+          );
+        }
       }
 
       return tempInputs;
@@ -73,7 +89,7 @@
 
   onMount(() => {
     initializeVmixListener();
-
+    
     setTimeout(() => {
       addLog('Performing initial state fetch...', 'info');
       fetchAllInputs();
@@ -109,6 +125,10 @@
       window.electronAPI.updateMenuState($panelStates);
     }
   }
+  
+  const BASE_SEARCH_WIDTH = 150;
+  const PER_CHAR_WIDTH = 9;
+  $: searchInputWidth = BASE_SEARCH_WIDTH + ($searchQuery.length * PER_CHAR_WIDTH);
 
   function handleKeydown(event) {
     const target = event.target;
@@ -269,10 +289,10 @@
     </Panel>
   {/if}
 
-  {#if $panelStates['timer1']?.visible}
+  {#if $panelStates['timer']?.visible}
     <Panel 
-      id="timer1" 
-      title={$inputMappings.timer1 || 'Timer 1'}
+      id="timer" 
+      title={$inputMappings.timer || 'Timer'}
       defaultState={{ x: 820, y: 630, width: 220, height: 200, z: 1 }}
     >
       <Timer />
@@ -350,6 +370,7 @@
           placeholder="Filter inputs..."
           bind:value={$searchQuery}
           on:click|stopPropagation
+          style="width: {searchInputWidth}px; max-width: 90%;"
         />
         <button
           class="panel-control"
@@ -406,16 +427,17 @@
     gap: 15px;
     flex-grow: 1;
     margin-right: 10px;
+    justify-content: flex-end;
   }
 
   .search-input {
-    width: 100%;
     background-color: var(--color-metal, #1f1f23);
     border: 1px solid #4a4a4e;
     color: #eee;
     border-radius: 5px;
     padding: 4px 8px;
     font-family: inherit;
+    transition: width 0.2s ease-out;
   }
 
   .search-input:focus {

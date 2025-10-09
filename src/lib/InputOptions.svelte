@@ -13,25 +13,17 @@
   <button on:click={() => toggle('showPreviewLed')}>
     {$visibilityOptions.showPreviewLed ? 'Hide' : 'Show'} Preview LED
   </button>
+  <button on:click={() => toggle('autoFitInputText')}>
+    {$visibilityOptions.autoFitInputText ? 'Disable' : 'Enable'} Auto-fit Text
+  </button>
   <hr />
   <button on:click={() => toggle('showL3s')}>
     {$visibilityOptions.showL3s ? 'Hide' : 'Show'} L3s
   </button>
-  <button on:click={() => toggle('show1Ups')}>
-    {$visibilityOptions.show1Ups ? 'Hide' : 'Show'} 1UPs
-  </button>
-  <button on:click={() => toggle('show2Ups')}>
-    {$visibilityOptions.show2Ups ? 'Hide' : 'Show'} 2UPs
-  </button>
-  <button on:click={() => toggle('show3Ups')}>
-    {$visibilityOptions.show3Ups ? 'Hide' : 'Show'} 3UPs
-  </button>
-  <button on:click={() => toggle('show4Ups')}>
-    {$visibilityOptions.show4Ups ? 'Hide' : 'Show'} 4UPs
-  </button>
-</div>
+  </div>
 
 <style>
+  /* Styles are unchanged */
   .options-container {
     display: flex;
     flex-direction: column;

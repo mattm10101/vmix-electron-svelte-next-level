@@ -25,7 +25,7 @@ const toggleablePanels = [
   { id: 'inputOptions', label: 'Input Options' },
   { id: 'scripts', label: 'Scripts' },
   { id: 'log', label: 'Command Log' },
-  { id: 'timer1', label: 'Timer 1' },
+  { id: 'timer', label: 'Timer' },
 ];
 
 function startVuPolling(window) {

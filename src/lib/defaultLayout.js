@@ -14,5 +14,5 @@ export const defaultLayout = {
   inputs: { x: 20, y: 20, width: 1020, height: 740, z: 1, min: false, visible: true },
   log: { x: 20, y: 980, width: 1250, height: 140, z: 1, min: false, visible: true },
   options: { x: 660, y: 770, width: 380, height: 200, z: 1, min: false, visible: true },
-  timer1: { x: 820, y: 630, width: 220, height: 200, z: 1, min: false, visible: true },
+  timer: { x: 820, y: 630, width: 220, height: 200, z: 1, min: false, visible: true },
 };

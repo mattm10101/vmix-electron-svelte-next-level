@@ -24,7 +24,7 @@ export const inputMappings = persistentStore('inputMappings', {
   photos: 'Photos',
   slides: 'SLIDES',
   lowerThirds: 'L3 - ',
-  timer1: 'TIMER 1',
+  timer: 'TIMER',
 });
 export const savedDefaultLayout = persistentStore('savedDefaultLayout', null);
 export const panelStates = persistentStore(
@@ -43,6 +43,7 @@ export const visibilityOptions = persistentStore('visibilityOptions', {
   showNumbers: true,
   showL3s: true,
   showPreviewLed: true,
+  autoFitInputText: true,
 });
 export const gridOptions = persistentStore('gridOptions', {
   show: true,

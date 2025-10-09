@@ -1,12 +1,23 @@
 <script>
+  import { visibilityOptions } from './stores.js';
+
   export let id
-  export let name // This is the property we'll use for the main display
+  export let name
   export let number
   export let isProgram = false
   export let isPreview = false
   export let onCommand = (detail) => {}
 
-  $: tallyClass = isProgram ? 'program' : isPreview ? 'preview' : ''
+  $: tallyClass = isProgram ? 'program' : isPreview ? 'preview' : '';
+
+  // --- NEW: Logic for auto-fitting text ---
+  // We define thresholds for what we consider a "long" title
+  const LONG_TEXT_THRESHOLD = 20;
+  const VERY_LONG_TEXT_THRESHOLD = 35;
+
+  // These reactive variables will apply classes only if the setting is enabled
+  $: isLong = $visibilityOptions.autoFitInputText && name.length > LONG_TEXT_THRESHOLD;
+  $: isVeryLong = $visibilityOptions.autoFitInputText && name.length > VERY_LONG_TEXT_THRESHOLD;
 </script>
 
 <button
@@ -14,7 +25,12 @@
   on:click={() => onCommand(`FUNCTION PreviewInput Input=${id}`)}
 >
   <span class="input-number">{number}</span>
-  <span class="input-name">{name}</span> </button>
+  <span 
+    class="input-name"
+    class:long={isLong}
+    class:very-long={isVeryLong}
+  >{name}</span>
+</button>
 
 <style>
   .input-btn {
@@ -62,12 +78,22 @@
     color: white;
   }
   .input-name {
-    font-size: 0.8em;
+    font-size: 1.0em;
     margin-top: 5px;
     color: #ccc;
+    transition: font-size 0.2s ease-out; /* Smoothly shrink text */
   }
   .program .input-name,
   .preview .input-name {
     color: white;
+  }
+
+  /* --- NEW: CSS classes to shrink the font size --- */
+  .input-name.long {
+    font-size: 0.8em;
+  }
+  .input-name.very-long {
+    font-size: 0.65em;
+    line-height: 1.1; /* Tighten up line spacing for very long text */
   }
 </style>

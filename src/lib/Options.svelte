@@ -36,8 +36,8 @@
     <input type="text" id="slides-map" bind:value={$inputMappings.slides} />
   </div>
   <div class="option-item">
-    <label for="timer1-map">Timer 1</label>
-    <input type="text" id="timer1-map" bind:value={$inputMappings.timer1} />
+    <label for="timer-map">Timer</label>
+    <input type="text" id="timer-map" bind:value={$inputMappings.timer} />
   </div>
   <div class="option-item">
     <label for="l3-map">L3s Prefix</label>

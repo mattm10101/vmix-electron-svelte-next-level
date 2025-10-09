@@ -4,17 +4,17 @@
   import { sendCommand } from './vmix.js';
 
   let setTimeValue = '00:10:00';
+  
+  const adjustValues = [1, 2, 5, 10, -1, -2, -5, -10];
 
-  // --- UPDATED: Reordered array for vertical alignment ---
-  const adjustSeconds = [-1, -2, -5, -10, 1, 2, 5, 10];
-
-  const targetInputName = derived(inputMappings, ($mappings) => $mappings.timer1);
+  const targetInputName = derived(inputMappings, ($mappings) => $mappings.timer);
   
   const timerInput = derived(
     [inputs, targetInputName],
     ([$inputs, $targetInputName]) => {
       if (!$targetInputName) return null;
-      return $inputs.find((i) => i.shortTitle === $targetInputName);
+      const trimmedTarget = $targetInputName.trim();
+      return $inputs.find((i) => i.shortTitle.trim() === trimmedTarget);
     }
   );
 
@@ -41,8 +41,9 @@
     sendCommand(`FUNCTION SetCountdown Input=${$timerInput.key}&Value=${setTimeValue}`);
   }
 
-  function handleAdjustSeconds(seconds) {
+  function handleAdjust(minutes) {
     if (!$timerInput) return;
+    const seconds = minutes * 60;
     sendCommand(`FUNCTION AdjustCountdown Input=${$timerInput.key}&Value=${seconds}`);
   }
 </script>
@@ -51,7 +52,7 @@
   {#if $timerInput}
     <div class="time-setter">
       <input 
-        id="set-time-input" 
+        id="set-time-input-timer" 
         type="text" 
         bind:value={setTimeValue}
         maxlength="8"
@@ -61,9 +62,9 @@
     </div>
 
     <div class="adjust-grid">
-      {#each adjustSeconds as seconds}
-        <button class="grid-btn" class:adjust-plus={seconds > 0} class:adjust-minus={seconds < 0} on:click={() => handleAdjustSeconds(seconds)}>
-          {seconds > 0 ? `+${seconds}` : seconds}s
+      {#each adjustValues as minutes}
+        <button class="grid-btn" class:adjust-plus={minutes > 0} class:adjust-minus={minutes < 0} on:click={() => handleAdjust(minutes)}>
+          {minutes > 0 ? `+${minutes}` : minutes}m
         </button>
       {/each}
     </div>
@@ -73,15 +74,14 @@
     </div>
 
     <div class="controls">
+      <button class="control-btn play-btn" on:click={handlePlay} title="Play">▶</button>
       <button class="control-btn pause-btn" on:click={handlePause} title="Pause">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
       </button>
-      <button class="control-btn play-btn" on:click={handlePlay} title="Play">▶</button>
       <button class="control-btn zero-btn" on:click={handleZero} title="Stop and Zero Timer">
-        0
+        Clear
       </button>
     </div>
-
   {:else}
     <div class="placeholder">
       Timer input "{get(targetInputName)}" not found.
@@ -140,7 +140,10 @@
   .zero-btn:hover { background-color: #c53030; color: white; }
   
   .pause-btn svg { width: 18px; height: 18px; }
-  .zero-btn { font-size: 1.1em; font-weight: bold; }
+  .zero-btn {
+    font-size: 0.9em;
+    font-weight: bold;
+  }
   
   .time-setter { width: 100%; display: flex; gap: 8px; flex-shrink: 0; }
   .time-setter input { flex-grow: 1; background: #1f1f23; border: 1px solid #555; color: #eee; border-radius: 3px; padding: 6px 8px; font-family: 'Courier New', Courier, monospace; font-size: 1em; text-align: center; }
